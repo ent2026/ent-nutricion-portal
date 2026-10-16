@@ -1,7 +1,5 @@
 name: Publish ENT preview
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
