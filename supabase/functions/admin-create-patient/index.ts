@@ -9,6 +9,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 });
 const cleanString = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
+const normalizeUsername = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
 const newTemporaryPassword = () => {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
   const bytes = crypto.getRandomValues(new Uint8Array(24));
@@ -35,7 +36,7 @@ Deno.serve(async (request) => {
   let input: Record<string, unknown>;
   try { input = await request.json(); } catch { return json({ error: 'Solicitud inválida.' }, 400); }
   let fullName = cleanString(input.full_name, 160);
-  let email = cleanString(input.email, 320).toLowerCase();
+  let username = normalizeUsername(cleanString(input.username, 40));
   let phone = cleanString(input.phone, 40);
   let planCode = cleanString(input.plan_code, 20);
   let planMonths = Number(input.plan_months);
@@ -43,30 +44,42 @@ Deno.serve(async (request) => {
 
   if (applicationId) {
     const { data: application, error } = await service.from('patient_applications')
-      .select('id,full_name,email,phone,plan_code,plan_months,status')
+      .select('id,full_name,username,phone,plan_code,plan_months,status')
       .eq('id', applicationId).maybeSingle();
     if (error || !application || application.status !== 'new') return json({ error: 'La solicitud ya se procesó o no existe.' }, 409);
     fullName = application.full_name;
-    email = application.email.toLowerCase();
+    username = normalizeUsername(application.username || fullName.replace(/\s+/g, '.'));
     phone = application.phone;
     planCode = application.plan_code;
     planMonths = application.plan_months;
   }
 
-  if (fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phone.length < 7 || !['light', 'weight', 'best'].includes(planCode) || ![6, 12].includes(planMonths)) {
-    return json({ error: 'Revisa nombre, correo, teléfono y membresía.' }, 400);
+  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !['light', 'weight', 'best'].includes(planCode) || ![6, 12].includes(planMonths)) {
+    return json({ error: 'Revisa nombre, usuario, teléfono y membresía.' }, 400);
+  }
+
+  const requestedUsername = username;
+  for (let suffix = 2; suffix < 100; suffix += 1) {
+    const { data: existing, error } = await service.from('patient_profiles').select('user_id').eq('username', username).maybeSingle();
+    if (error) return json({ error: 'No se pudo comprobar la disponibilidad del usuario.' }, 500);
+    if (!existing) break;
+    const ending = String(suffix);
+    username = `${requestedUsername.slice(0, 40 - ending.length)}${ending}`;
   }
 
   const password = newTemporaryPassword();
+  // Supabase Auth password sign-in accepts email or phone. ENT exposes only the
+  // stable username; this non-deliverable internal address is never shown to patients.
+  const email = `${username}@paciente.ent.invalid`;
   const { data: created, error: createError } = await service.auth.admin.createUser({
     email, password, email_confirm: true,
     app_metadata: { role: 'patient' },
-    user_metadata: { full_name: fullName, must_change_password: true },
+    user_metadata: { full_name: fullName, username, must_change_password: true },
   });
-  if (createError || !created.user) return json({ error: 'No se pudo crear la cuenta. Verifica si el correo ya está registrado.' }, 409);
+  if (createError || !created.user) return json({ error: 'No se pudo crear la cuenta. El usuario podría estar ocupado; intenta con otra variante.' }, 409);
 
   const { error: profileError } = await service.from('patient_profiles').insert({
-    user_id: created.user.id, full_name: fullName, phone, plan_code: planCode,
+    user_id: created.user.id, full_name: fullName, username, phone, plan_code: planCode,
     plan_months: planMonths, status: 'pending',
   });
   if (profileError) {
@@ -82,5 +95,5 @@ Deno.serve(async (request) => {
     }
   }
 
-  return json({ email, temporary_password: password, full_name: fullName });
+  return json({ username, temporary_password: password, full_name: fullName });
 });
