@@ -6,7 +6,7 @@
     : null);
   if (client) window.ENT_SUPABASE_CLIENT = client;
   const dedicatedView = document.body.dataset.portalView || '';
-  const ADMIN_EMAIL = 'entestebantellez2026@gmail.com';
+  const ADMIN_EMAIL = 'entestebantelleznutriologo@gmail.com';
   const backdrop = document.querySelector('#modal');
   const content = dedicatedView
     ? document.querySelector('#portal-root')
