@@ -7,7 +7,8 @@ let selectedPayment = 'transfer';
 let toastTimer;
 
 const planNames = {light:'Light',weight:'Weight',best:'Best'};
-const publicClient = window.ENT_SUPABASE_CONFIG && window.supabase?.createClient ? window.supabase.createClient(window.ENT_SUPABASE_CONFIG.url, window.ENT_SUPABASE_CONFIG.publishableKey) : null;
+const publicClient = window.ENT_SUPABASE_CLIENT || (window.ENT_SUPABASE_CONFIG && window.supabase?.createClient ? window.supabase.createClient(window.ENT_SUPABASE_CONFIG.url, window.ENT_SUPABASE_CONFIG.publishableKey, { auth: { persistSession: true, autoRefreshToken: true } }) : null);
+if (publicClient) window.ENT_SUPABASE_CLIENT = publicClient;
 let siteSettings = null;
 const escapeHtml = (value='') => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = value => value == null || value === '' ? 'Por confirmar' : new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(Number(value));
@@ -27,6 +28,9 @@ async function loadPublicSettings(){
   const {data,error}=await publicClient.from('site_configuration').select('*').eq('id',1).maybeSingle();
   if(error){console.warn('No fue posible cargar la configuración pública de ENT.');return;}
   siteSettings=data;refreshPublicSettings();
+  const activePrice=document.querySelector('#enrollment-price');if(activePrice)activePrice.textContent='Precio: '+money(priceFor(selectedPlan,selectedDuration))+' MXN';
+  const bankDetails=document.querySelector('#transfer-details');if(bankDetails)bankDetails.textContent=[siteSettings.bank_account_holder,siteSettings.bank_name,siteSettings.bank_clabe?'CLABE '+siteSettings.bank_clabe:null].filter(Boolean).join(' · ')||'Los datos bancarios se confirmarán con ENT.';
+  const officeDetails=document.querySelector('#office-details');if(officeDetails&&siteSettings.office_address)officeDetails.textContent='Pago en la primera cita presencial · '+siteSettings.office_address;
 }
 loadPublicSettings();
 const showToast = (message) => {
