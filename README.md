@@ -4,22 +4,22 @@ Portal web responsivo para Esteban Téllez. La interfaz está hecha con HTML, CS
 
 ## Estado del proyecto
 
-- La página de inicio y los planes Light, Weight y Best están listos para revisión.
-- Los accesos de paciente y administrador ya usan Supabase Auth.
-- El perfil del paciente consulta su perfil, mediciones, dieta, entrenamiento y citas, sujeto a las políticas RLS de Supabase.
-- El administrador consulta solicitudes, expedientes y citas, sujeto al rol admin en app_metadata.
+- Página de inicio y planes Light, Weight y Best listos para revisión.
+- Accesos de paciente y administrador conectados a Supabase Auth.
+- El perfil del paciente consulta su perfil, mediciones, dieta, entrenamiento y citas, sujeto a las políticas RLS.
+- El administrador puede consultar expedientes y solicitudes, registrar mediciones, publicar dietas y rutinas, y agendar consultas.
 - El esquema de datos está documentado en [supabase/schema.sql](supabase/schema.sql).
-- Las tablas no contienen expedientes ni datos de pacientes.
+- Las tablas están vacías; no se han cargado expedientes ni datos de pacientes.
 
 ## Pendiente de habilitar
 
-Aún no se han creado cuentas de administrador o pacientes. Tampoco están conectados el formulario público de solicitud, el alta/invitación de cuentas, la edición de mediciones y planes, los pagos ni las notificaciones de WhatsApp. Los precios y la dirección del consultorio también deben confirmarse.
+Aún no hay cuentas de administrador o pacientes. La creación e invitación de cuentas debe configurarse de forma segura. También falta conectar el formulario público de solicitud, la notificación por WhatsApp y los pagos. Los precios y la dirección del consultorio deben confirmarse.
 
 ## Publicación de la vista previa
 
 El repositorio debe estar público para usar GitHub Pages con GitHub Free. En **Settings → Pages**, el origen debe ser **GitHub Actions**. Después ejecuta manualmente **Actions → Publish ENT preview → Run workflow**. El archivo de flujo es .github/workflows/pages.yml.
 
-La página de demostración no debe recibir información real de pacientes. El repositorio público contiene el código fuente y configuración pública del cliente Supabase; no debe incluir contraseñas, claves secretas ni expedientes.
+La página de demostración no debe recibir información real de pacientes. El repositorio público contiene el código fuente y la configuración pública del cliente Supabase; no debe incluir contraseñas, claves secretas ni expedientes.
 
 ## Seguridad de Supabase
 
