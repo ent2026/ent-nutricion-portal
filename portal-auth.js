@@ -1,9 +1,10 @@
 (() => {
   const config = window.ENT_SUPABASE_CONFIG;
   const clientFactory = window.supabase?.createClient;
-  const client = config && clientFactory
+  const client = window.ENT_SUPABASE_CLIENT || (config && clientFactory
     ? clientFactory(config.url, config.publishableKey, { auth: { persistSession: true, autoRefreshToken: true } })
-    : null;
+    : null);
+  if (client) window.ENT_SUPABASE_CLIENT = client;
   const dedicatedView = document.body.dataset.portalView || '';
   const backdrop = document.querySelector('#modal');
   const content = dedicatedView
@@ -80,8 +81,8 @@
       if (error) throw error;
       const latest = data?.[0];
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${tab === 'resumen' ? 'Última valoración' : 'Mediciones y evolución'}</h3><span>${latest ? escapeHtml(dateLabel(latest.measured_on)) : 'SIN VALORACIONES'}</span></div>
-        <div class="metric-grid">${metric('PESO', latest?.weight_kg, 'kg')}${metric('GRASA CORPORAL', latest?.body_fat_pct, '%')}${metric('MASA MUSCULAR', latest?.muscle_mass_kg, 'kg')}${metric('ÍNDICE VISCERAL', latest?.visceral_fat_index, '')}</div>
-        ${data?.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>FECHA</th><th>PESO</th><th>GRASA</th><th>MÚSCULO</th></tr></thead><tbody>${data.map((row) => `<tr><td>${escapeHtml(dateLabel(row.measured_on))}</td><td>${row.weight_kg ?? '—'} kg</td><td>${row.body_fat_pct ?? '—'} %</td><td>${row.muscle_mass_kg ?? '—'} kg</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Tu nutriólogo todavía no publica mediciones.</p>'}
+        <div class="metric-grid">${metric('PESO', latest?.weight_kg, 'kg')}${metric('GRASA CORPORAL', latest?.body_fat_pct, '%')}${metric('MASA MUSCULAR', latest?.muscle_mass_kg, 'kg')}${metric('IMC', latest?.weight_kg && latest?.height_cm ? (Number(latest.weight_kg)/(Number(latest.height_cm)/100)**2).toFixed(1) : null, '')}${metric('ÍNDICE VISCERAL', latest?.visceral_fat_index, '')}</div>
+        ${data?.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>FECHA</th><th>PESO</th><th>ESTATURA</th><th>IMC</th><th>GRASA</th><th>MÚSCULO</th><th>CINTURA</th><th>CADERA</th></tr></thead><tbody>${data.map((row) => `<tr><td>${escapeHtml(dateLabel(row.measured_on))}</td><td>${row.weight_kg ?? '—'} kg</td><td>${row.height_cm ?? '—'} cm</td><td>${row.weight_kg && row.height_cm ? (Number(row.weight_kg)/(Number(row.height_cm)/100)**2).toFixed(1) : '—'}</td><td>${row.body_fat_pct ?? '—'} %</td><td>${row.muscle_mass_kg ?? '—'} kg</td><td>${row.waist_cm ?? '—'} cm</td><td>${row.hip_cm ?? '—'} cm</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Tu nutriólogo todavía no publica mediciones.</p>'}
       </section>`;
       if (tab === 'resumen') {
         const { data: diet, error: dietError } = await client.from('nutrition_updates').select('id,title,published_at,created_at').eq('patient_id', userId).eq('is_published', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
