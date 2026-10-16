@@ -158,7 +158,7 @@
     } else if (tab === 'entrenamiento') {
       const { data, error } = await client.from('training_plans').select('*').eq('patient_id', userId).eq('is_published', true).order('created_at', { ascending: false });
       if (error) throw error;
-      inner = data?.length ? data.map((item) => `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div><div class="live-plan-text">${escapeHtml(item.plan_content)}</div></section>`).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Si tu membresía lo incluye, consulta con ENT cuándo estará disponible.</p></section>';
+      inner = data?.length ? data.map((item) => `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div><div class="live-plan-text">${escapeHtml(item.plan_content)}</div></section>`).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Tu nutriólogo publicará aquí una rutina personalizada cuando forme parte de tu seguimiento.</p></section>';
     } else if (tab === 'citas') {
       const { data, error } = await client.from('appointments').select('scheduled_at,appointment_type,location_or_link,status').eq('patient_id', userId).order('scheduled_at', { ascending: false });
       if (error) throw error;
@@ -323,7 +323,7 @@
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar actualización</button>
         </form>
       </section>
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Publicar entrenamiento</h3><span>PLAN WEIGHT / BEST</span></div>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Publicar entrenamiento</h3><span>RUTINAS PERSONALIZADAS</span></div>
         <form class="live-admin-form" id="admin-training-form"><label class="form-label" for="training-patient">Paciente</label><select class="select" id="training-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
           <label class="form-label" for="training-title">Título</label><input class="input" id="training-title" name="title" maxlength="180" required placeholder="Ej. Rutina · bloque 1" />
           <label class="form-label" for="training-content">Entrenamiento e indicaciones</label><textarea class="input live-textarea" id="training-content" name="plan_content" required></textarea>
