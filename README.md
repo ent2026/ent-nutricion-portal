@@ -1,29 +1,27 @@
 # ENT · Portal de nutrición y rendimiento
 
-Portal web responsivo para Esteban Téllez. La interfaz está hecha con HTML, CSS y JavaScript. La autenticación y los expedientes usan Supabase en una organización Free. La vista pública de demostración se publicará con GitHub Pages.
+Portal web responsivo para Esteban Téllez, construido con HTML, CSS y JavaScript. Usa Supabase Auth, Postgres y Storage para cuentas y expedientes. La vista pública se publica como previa gratuita con GitHub Pages.
 
-## Estado del proyecto
+## Funciones
 
-- Página de inicio y planes Light, Weight y Best listos para revisión.
-- Accesos de paciente y administrador conectados a Supabase Auth.
-- El perfil del paciente consulta su perfil, mediciones, dieta, entrenamiento y citas, sujeto a las políticas RLS.
-- El administrador puede consultar expedientes y solicitudes, registrar mediciones, publicar dietas y rutinas, y agendar consultas.
-- El esquema de datos está documentado en [supabase/schema.sql](supabase/schema.sql).
-- Las tablas están vacías; no se han cargado expedientes ni datos de pacientes.
+- Portada con seis servicios coherentes en el formulario público y en el administrador: consulta inicial, seguimiento, paquetes bimestral, trimestral y semestral, y consulta en pareja.
+- Solicitudes en línea guardadas en la bandeja del administrador. El paciente puede abrir WhatsApp con el mensaje de solicitud preparado y confirmar el envío desde WhatsApp.
+- Altas manuales y aprobación de solicitudes con usuario y contraseña definidos por el administrador.
+- Directorio con búsqueda, selección individual o múltiple, apertura de expediente y baja confirmada.
+- Perfil individual con resumen, mediciones, historial, archivos PDF de dieta, rutinas, fotos privadas, consultas y avisos.
+- Administración de precios públicos, medios de pago, dirección del consultorio y avisos generales.
+- RLS y Storage privados para que cada paciente vea solo sus datos publicados.
 
-## Pendiente de habilitar
+## Publicación y límites
 
-Aún no hay cuentas de administrador o pacientes. La creación e invitación de cuentas debe configurarse de forma segura. También falta conectar el formulario público de solicitud, la notificación por WhatsApp y los pagos. Los precios y la dirección del consultorio deben confirmarse.
+GitHub Pages sirve la vista previa del repositorio ent2026/ent-nutricion-portal. Para producción se planea migrar el sitio a Netlify.
 
-## Publicación de la vista previa
+El formulario de solicitud no procesa pagos ni confirma citas. El enlace de WhatsApp prepara el mensaje, pero la persona debe tocar Enviar en WhatsApp. No se deben introducir datos médicos sensibles en la solicitud pública. Los expedientes deben mantenerse en Supabase con sus políticas de acceso.
 
-El repositorio debe estar público para usar GitHub Pages con GitHub Free. En **Settings → Pages**, el origen debe ser **GitHub Actions**. Después ejecuta manualmente **Actions → Publish ENT preview → Run workflow**. El archivo de flujo es .github/workflows/pages.yml.
+El repositorio público contiene el código fuente y la clave publicable de Supabase. Nunca debe contener contraseñas, claves secretas ni información de pacientes.
 
-La página de demostración no debe recibir información real de pacientes. El repositorio público contiene el código fuente y la configuración pública del cliente Supabase; no debe incluir contraseñas, claves secretas ni expedientes.
+## Administración de datos
 
-## Seguridad de Supabase
+El administrador puede registrar mediciones, publicar dietas y rutinas, añadir fotos, registrar consultas y avisos, y ajustar precios. La eliminación de un expediente borra permanentemente su cuenta, archivos e historial después de confirmar el usuario y la acción. Debe usarse con cuidado.
 
-- Row Level Security está activado en todas las tablas públicas.
-- Los pacientes solo pueden consultar su propio expediente; las dietas y rutinas solo son visibles tras publicarse.
-- El rol administrativo se valida desde app_metadata, que no puede modificarse desde el perfil del usuario.
-- supabase-config.js contiene el URL del proyecto y una clave publicable diseñada para el cliente web. No contiene una clave service_role.
+Las credenciales de pacientes se definen al crear el acceso. La contraseña se muestra solo en el flujo de creación para que el administrador pueda copiarla y compartirla de forma segura; no queda almacenada en texto visible dentro del expediente.
