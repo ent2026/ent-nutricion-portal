@@ -6,6 +6,7 @@
     : null);
   if (client) window.ENT_SUPABASE_CLIENT = client;
   const dedicatedView = document.body.dataset.portalView || '';
+  const ADMIN_EMAIL = 'entestebantellez2026@gmail.com';
   const backdrop = document.querySelector('#modal');
   const content = dedicatedView
     ? document.querySelector('#portal-root')
@@ -56,17 +57,32 @@
       <p class="modal-lede">${admin ? 'Ingresa con el correo y la contraseña de administración.' : 'Ingresa con tu usuario ENT y contraseña.'}</p>
       <form id="ent-login-form" novalidate>
         <div class="form-grid login-grid">
-          ${admin ? '<div><label class="form-label" for="ent-login-email">Correo de administración</label><input class="input" id="ent-login-email" name="email" type="email" autocomplete="username" required /></div>' : '<div><label class="form-label" for="ent-login-username">Usuario</label><input class="input" id="ent-login-username" name="username" type="text" autocomplete="username" minlength="3" maxlength="40" required /></div>'}
+          ${admin ? `<div><label class="form-label" for="ent-login-email">Correo de administración</label><input class="input" id="ent-login-email" name="email" type="email" value="${ADMIN_EMAIL}" autocomplete="username" readonly required /></div>` : '<div><label class="form-label" for="ent-login-username">Usuario</label><input class="input" id="ent-login-username" name="username" type="text" autocomplete="username" minlength="3" maxlength="40" required /></div>'}
           <div><label class="form-label" for="ent-login-password">Contraseña</label><input class="input" id="ent-login-password" name="password" type="password" autocomplete="current-password" required /></div>
         </div>
         <p class="login-error" id="ent-login-error" role="alert" hidden></p>
         <button class="button button-dark form-submit" id="ent-login-submit" type="submit">Ingresar <span>→</span></button>
       </form>
-      <p class="form-note">Si aún no tienes acceso, solicita tus credenciales directamente a ENT.</p>
+      <p class="form-note" id="ent-login-note">${admin ? 'El acceso ENT es independiente de GitHub. Si es tu primer acceso, crea la cuenta inicial aquí.' : 'Si aún no tienes acceso, solicita tus credenciales directamente a ENT.'}</p>
+      ${admin ? '<button class="button button-outline form-submit" type="button" data-admin-setup>Crear cuenta inicial de administración</button>' : ''}
       ${dedicatedView ? '' : `<div class="live-demo-entry"><span>¿Solo quieres revisar el diseño?</span><button class="button button-outline" type="button" data-open-demo="${admin ? 'admin' : 'patient'}">Ver vista de muestra</button><small>Usa datos ficticios y no guarda cambios.</small></div>`}
       ${dedicatedView ? '<a class="portal-return" href="./index.html">← Volver al sitio ENT</a>' : ''}
     </div>`);
   };
+  const showAdminSetup = () => showModal(`<div class="dashboard login-wrap">
+    <div class="modal-kicker">CONFIGURACIÓN INICIAL</div>
+    <h2 id="modal-title">Crea el acceso de administración</h2>
+    <p class="modal-lede">Este registro está reservado para el correo autorizado de ENT. Crea una contraseña nueva; no uses la de GitHub.</p>
+    <form id="ent-admin-setup-form" novalidate>
+      <div><label class="form-label" for="ent-admin-setup-email">Correo autorizado</label><input class="input" id="ent-admin-setup-email" type="email" value="${ADMIN_EMAIL}" readonly /></div>
+      <div><label class="form-label" for="ent-admin-setup-password">Contraseña nueva</label><input class="input" id="ent-admin-setup-password" name="password" type="password" autocomplete="new-password" minlength="12" required /></div>
+      <div><label class="form-label" for="ent-admin-setup-confirm">Confirma la contraseña</label><input class="input" id="ent-admin-setup-confirm" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /></div>
+      <p class="login-error" id="ent-login-error" role="alert" hidden></p>
+      <p class="form-note" id="ent-setup-note">Si Supabase solicita confirmar el correo, revisa la bandeja de entrada y después vuelve aquí para iniciar sesión.</p>
+      <button class="button button-dark form-submit" type="submit">Crear acceso seguro →</button>
+    </form>
+    <button class="button button-outline form-submit" type="button" data-admin-login>Volver al inicio de sesión</button>
+  </div>`);
   const showFirstPasswordForm = () => showModal(`<div class="dashboard login-wrap"><div class="modal-kicker">ACTIVA TU ACCESO</div><h2 id="modal-title">Crea una contraseña personal</h2><p class="modal-lede">Por seguridad, reemplaza tu clave temporal antes de entrar a tu perfil.</p><form id="ent-first-password-form"><label class="form-label" for="new-patient-password">Nueva contraseña</label><input class="input" id="new-patient-password" name="password" type="password" autocomplete="new-password" minlength="12" required /><label class="form-label" for="confirm-patient-password">Confirma la contraseña</label><input class="input" id="confirm-patient-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /><p class="login-error" id="ent-login-error" role="alert" hidden></p><button class="button button-dark form-submit" type="submit">Guardar y continuar →</button></form></div>`);
   const metric = (label, value, unit) => `<div class="metric"><small>${label}</small><strong>${value ?? '—'} <i>${unit}</i></strong></div>`;
   const photoBucket = 'patient-progress';
@@ -237,13 +253,28 @@
     await renderAdmin();
     content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · comparte estos datos de forma privada</b><span>Usuario: <strong>${escapeHtml(data.username)}</strong></span><span>Clave temporal: <code>${escapeHtml(data.temporary_password)}</code></span><small>La contraseña temporal se muestra solo esta vez. El paciente debe cambiarla al iniciar.</small></section>`);
   };
+  const promoteInitialAdmin = async () => {
+    const { data, error } = await client.functions.invoke('ent-admin-bootstrap');
+    if (error || data?.error) throw new Error('No se pudo habilitar el acceso inicial. Confirma el correo autorizado e inténtalo otra vez.');
+    const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+    if (refreshError || !refreshed?.session?.user) throw new Error('Se habilitó la cuenta, pero no se pudo actualizar la sesión. Inicia sesión de nuevo.');
+    return refreshed.session.user;
+  };
   const enterPortal = async (user) => {
     activeUser = user;
     if (requestedView === 'admin') {
       if (user.app_metadata?.role !== 'admin') {
-        await client.auth.signOut();
-        setLoginError('Esta cuenta no tiene permisos de administrador.');
-        return;
+        if (String(user.email || '').toLowerCase() !== ADMIN_EMAIL) {
+          await client.auth.signOut();
+          setLoginError('Esta cuenta no tiene permisos de administrador.');
+          return;
+        }
+        try { user = await promoteInitialAdmin(); activeUser = user; }
+        catch (error) {
+          await client.auth.signOut();
+          setLoginError(error.message || 'No se pudo activar la cuenta de administración.');
+          return;
+        }
       }
       await renderAdmin();
       return;
@@ -266,6 +297,10 @@
   };
 
   document.addEventListener('click', async (event) => {
+    const adminSetup = event.target.closest('[data-admin-setup]');
+    if (adminSetup) { event.preventDefault(); event.stopImmediatePropagation(); showAdminSetup(); return; }
+    const adminLogin = event.target.closest('[data-admin-login]');
+    if (adminLogin) { event.preventDefault(); event.stopImmediatePropagation(); showLogin('admin'); return; }
     const demo = event.target.closest('[data-open-demo]');
     if (demo) {
       event.preventDefault();
@@ -362,6 +397,30 @@
 
   document.addEventListener('submit', async (event) => {
     const form = event.target;
+    if (form.id === 'ent-admin-setup-form') {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const values = Object.fromEntries(new FormData(form).entries());
+      const password = String(values.password || '');
+      if (password.length < 12) { setLoginError('Usa una contraseña de al menos 12 caracteres.'); return; }
+      if (password !== String(values.confirm_password || '')) { setLoginError('Las contraseñas no coinciden.'); return; }
+      const button = form.querySelector('[type="submit"]'); button.disabled = true; button.textContent = 'Creando acceso…';
+      try {
+        const { data, error } = await client.auth.signUp({ email: ADMIN_EMAIL, password, options: { data: { full_name: 'Esteban Téllez' } } });
+        if (error) throw error;
+        if (data.session) {
+          const user = await promoteInitialAdmin();
+          await enterPortal(user);
+          return;
+        }
+        showLogin('admin');
+        const note = content.querySelector('#ent-login-note');
+        if (note) note.textContent = 'Solicitud creada. Revisa el correo de confirmación de Supabase y después inicia sesión aquí.';
+      } catch (error) {
+        setLoginError(error.message || 'No se pudo crear el acceso. Revisa la configuración de autenticación e inténtalo de nuevo.');
+        button.disabled = false; button.textContent = 'Crear acceso seguro →';
+      }
+      return;
+    }
     if (form.id === 'ent-first-password-form') {
       event.preventDefault();event.stopImmediatePropagation();
       const values=Object.fromEntries(new FormData(form).entries());
