@@ -7,6 +7,28 @@ let selectedPayment = 'transfer';
 let toastTimer;
 
 const planNames = {light:'Light',weight:'Weight',best:'Best'};
+const publicClient = window.ENT_SUPABASE_CONFIG && window.supabase?.createClient ? window.supabase.createClient(window.ENT_SUPABASE_CONFIG.url, window.ENT_SUPABASE_CONFIG.publishableKey) : null;
+let siteSettings = null;
+const escapeHtml = (value='') => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = value => value == null || value === '' ? 'Por confirmar' : new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(Number(value));
+const priceFor = (plan,months) => siteSettings?.['price_'+plan+'_'+months+'_months'];
+function refreshPublicSettings(){
+  for(const plan of ['light','weight','best']){
+    const a=document.querySelector('[data-plan-price-short="'+plan+'"]'),b=document.querySelector('[data-plan-price-long="'+plan+'"]'),main=document.querySelector('[data-plan-price="'+plan+'"]');
+    if(a)a.textContent=money(priceFor(plan,6));if(b)b.textContent=money(priceFor(plan,12));if(main)main.textContent='6 meses: '+money(priceFor(plan,6));
+  }
+  const host=document.querySelector('#public-announcement');if(!host||!siteSettings)return;
+  const now=Date.now(),start=siteSettings.announcement_starts_at?Date.parse(siteSettings.announcement_starts_at):0,end=siteSettings.announcement_ends_at?Date.parse(siteSettings.announcement_ends_at):Infinity;
+  if(!siteSettings.announcement_active||!siteSettings.announcement_title||!siteSettings.announcement_body||now<start||now>end)return;
+  host.hidden=false;host.innerHTML='<article class="announcement-card"><div class="announcement-mark">ENT <span>·</span> AVISO</div><div><h2>'+escapeHtml(siteSettings.announcement_title)+'</h2><p>'+escapeHtml(siteSettings.announcement_body).replace(/\n/g,'<br>')+'</p></div></article>';
+}
+async function loadPublicSettings(){
+  if(!publicClient)return;
+  const {data,error}=await publicClient.from('site_configuration').select('*').eq('id',1).maybeSingle();
+  if(error){console.warn('No fue posible cargar la configuración pública de ENT.');return;}
+  siteSettings=data;refreshPublicSettings();
+}
+loadPublicSettings();
 const showToast = (message) => {
   toast.textContent = message;
   toast.classList.add('show');
@@ -33,21 +55,26 @@ function startEnrollment(plan='light', competitionOnly=false) {
   const options=competitionOnly
     ? `<button type="button" class="select-plan selected" data-select-plan="best"><strong>Best</strong><span>Dieta, entrenamiento y preparación enfocada a competir.</span></button>`
     : `<button type="button" class="select-plan ${plan==='light'?'selected':''}" data-select-plan="light"><strong>Light</strong><span>Consultas, valoraciones y dieta en tu perfil.</span></button><button type="button" class="select-plan ${plan==='weight'?'selected':''}" data-select-plan="weight"><strong>Weight</strong><span>Light + entrenamiento y orientación en suplementación.</span></button>`;
-  openModal(`<div class="modal-kicker">${competitionOnly?'PREPARACIÓN DE COMPETENCIA':'SOLICITUD DE INGRESO'} · VISTA PREVIA</div>
+  openModal(`<div class="modal-kicker">${competitionOnly?'PREPARACIÓN DE COMPETENCIA':'SOLICITUD DE INGRESO'}</div>
     <h2 id="modal-title">${competitionOnly?'Un plan para tu meta competitiva.':'Elige tu acompañamiento.'}</h2>
     <p class="modal-lede">${competitionOnly?'El Plan Best es la opción de ENT para preparación enfocada a fisicoculturismo.':'Selecciona entre los planes Light y Weight y deja tus datos para coordinar una valoración.'}</p>
     <div class="plan-select-grid ${competitionOnly?'competition-only':''}">
       ${options}
     </div>
     <label class="form-label">Duración</label>
-    <div class="duration-row"><button class="duration-choice selected" type="button" data-duration="6">6 meses</button><button class="duration-choice" type="button" data-duration="12">1 año</button><span class="form-label" style="margin:11px 0 0 7px;color:#88928b">Precio por confirmar</span></div>
+    <div class="duration-row"><button class="duration-choice selected" type="button" data-duration="6">6 meses</button><button class="duration-choice" type="button" data-duration="12">1 año</button></div><div class="selected-price" id="enrollment-price">Precio: ${money(priceFor(selectedPlan,6))} MXN</div>
     <form id="enrollment-form">
-      <div class="form-grid"><div><label class="form-label" for="full-name">Nombre completo</label><input class="input" id="full-name" required placeholder="Tu nombre" autocomplete="name" /></div><div><label class="form-label" for="email">Correo electrónico</label><input class="input" id="email" type="email" required placeholder="tu@correo.com" autocomplete="email" /></div><div><label class="form-label" for="phone">WhatsApp</label><input class="input" id="phone" type="tel" required placeholder="Número con lada" autocomplete="tel" /></div><div><label class="form-label" for="goal">Objetivo principal</label><select class="select" id="goal"><option>Mejorar hábitos y composición corporal</option><option>Rendimiento deportivo</option><option>Preparación para competir</option><option>Otro objetivo</option></select></div></div>
+      <div class="form-grid"><div><label class="form-label" for="full-name">Nombre completo</label><input class="input" id="full-name" name="full_name" required maxlength="160" placeholder="Tu nombre" autocomplete="name" /></div><div><label class="form-label" for="email">Correo electrónico</label><input class="input" id="email" name="email" type="email" required maxlength="320" placeholder="tu@correo.com" autocomplete="email" /></div><div><label class="form-label" for="phone">WhatsApp</label><input class="input" id="phone" name="phone" type="tel" required maxlength="40" placeholder="Número con lada" autocomplete="tel" /></div><div><label class="form-label" for="goal">Objetivo principal</label><select class="select" id="goal" name="objective"><option>Mejorar hábitos y composición corporal</option><option>Rendimiento deportivo</option><option>Preparación para competir</option><option>Otro objetivo</option></select></div></div>
       <label class="form-label">Forma de pago preferida</label>
-      <div class="payment-row"><button type="button" class="payment-choice selected" data-payment="transfer"><strong>Transferencia</strong>Se compartirán los datos al confirmar.</button><button type="button" class="payment-choice" data-payment="office"><strong>Efectivo en consultorio</strong>El equipo confirmará dirección y horario.</button></div>
-      <div class="preview-callout">La solicitud no confirma una compra ni genera una cuenta. En la versión final, el administrador revisará tus datos, acordará la valoración y dará de alta tus credenciales.</div>
-      <button class="button button-dark form-submit" type="submit">Enviar solicitud de demostración <span>↗</span></button><p class="form-note">Demostración local: este botón no envía datos ni abre WhatsApp.</p>
+      <div class="payment-row"><button type="button" class="payment-choice selected" data-payment="transfer"><strong>Transferencia</strong><span id="transfer-details">Los datos bancarios estarán disponibles al confirmarse por ENT.</span></button><button type="button" class="payment-choice" data-payment="office_cash"><strong>Efectivo en consultorio</strong><span id="office-details">Pago en la primera cita presencial.</span></button></div>
+      <div class="preview-callout" id="payment-details">La solicitud no confirma una compra. ENT revisará tus datos y coordinará la valoración y el acceso al portal.</div>
+      <label class="consent-row"><input type="checkbox" name="consent" required><span>Autorizo a ENT a usar estos datos para contactarme y atender esta solicitud. No incluyas información médica sensible aquí.</span></label>
+      <button class="button button-dark form-submit" type="submit">Enviar solicitud <span>↗</span></button><p class="form-note" id="enrollment-feedback">Tu solicitud llegará al administrador de ENT.</p>
     </form>`);
+  const bankDetails=modal.querySelector('#transfer-details');
+  if(bankDetails&&siteSettings)bankDetails.textContent=[siteSettings.bank_account_holder,siteSettings.bank_name,siteSettings.bank_clabe?'CLABE '+siteSettings.bank_clabe:null].filter(Boolean).join(' · ')||'Los datos bancarios se confirmarán con ENT.';
+  const officeDetails=modal.querySelector('#office-details');
+  if(officeDetails&&siteSettings?.office_address)officeDetails.textContent='Pago en la primera cita presencial · '+siteSettings.office_address;
 }
 
 function patientDashboard() {
@@ -89,9 +116,9 @@ document.addEventListener('click',(event)=>{
   const viewButton=event.target.closest('[data-view]');
   if(viewButton){const view=viewButton.dataset.view;document.querySelector('#mobile-panel').classList.remove('open');document.querySelector('.mobile-menu').setAttribute('aria-expanded','false');document.querySelector('.mobile-menu').setAttribute('aria-label','Abrir menú');document.querySelector('.mobile-menu').textContent='☰';if(view==='patient')patientDashboard();else if(view==='admin')adminDashboard();else if(view==='competition')startEnrollment('best',true);else startEnrollment('light');return;}
   const planButton=event.target.closest('[data-plan]');if(planButton){startEnrollment(planButton.dataset.plan,planButton.dataset.plan==='best');return;}
-  const selectPlan=event.target.closest('[data-select-plan]');if(selectPlan){selectedPlan=selectPlan.dataset.selectPlan;modal.querySelectorAll('[data-select-plan]').forEach(b=>b.classList.toggle('selected',b.dataset.selectPlan===selectedPlan));return;}
-  const duration=event.target.closest('[data-duration]');if(duration){selectedDuration=duration.dataset.duration;modal.querySelectorAll('[data-duration]').forEach(b=>b.classList.toggle('selected',b.dataset.duration===selectedDuration));return;}
-  const payment=event.target.closest('[data-payment]');if(payment){selectedPayment=payment.dataset.payment;modal.querySelectorAll('[data-payment]').forEach(b=>b.classList.toggle('selected',b.dataset.payment===selectedPayment));return;}
+  const selectPlan=event.target.closest('[data-select-plan]');if(selectPlan){selectedPlan=selectPlan.dataset.selectPlan;modal.querySelectorAll('[data-select-plan]').forEach(b=>b.classList.toggle('selected',b.dataset.selectPlan===selectedPlan));const price=modal.querySelector('#enrollment-price');if(price)price.textContent='Precio: '+money(priceFor(selectedPlan,selectedDuration))+' MXN';return;}
+  const duration=event.target.closest('[data-duration]');if(duration){selectedDuration=duration.dataset.duration;modal.querySelectorAll('[data-duration]').forEach(b=>b.classList.toggle('selected',b.dataset.duration===selectedDuration));const price=modal.querySelector('#enrollment-price');if(price)price.textContent='Precio: '+money(priceFor(selectedPlan,selectedDuration))+' MXN';return;}
+  const payment=event.target.closest('[data-payment]');if(payment){selectedPayment=payment.dataset.payment;modal.querySelectorAll('[data-payment]').forEach(b=>b.classList.toggle('selected',b.dataset.payment===selectedPayment));const details=modal.querySelector('#payment-details');if(details)details.textContent=selectedPayment==='transfer'?'Transferencia: '+(siteSettings?.bank_account_holder||'titular por confirmar')+' · '+(siteSettings?.bank_name||'banco por confirmar')+' · CLABE '+(siteSettings?.bank_clabe||'por confirmar')+'. '+(siteSettings?.transfer_instructions||''):'Efectivo en la primera cita presencial. '+(siteSettings?.office_address||'La dirección se confirmará al agendar.');return;}
   const tab=event.target.closest('[data-dash]');if(tab){modal.querySelectorAll('[data-dash]').forEach(b=>b.classList.toggle('active',b===tab));document.querySelector('#dash-content').innerHTML=dashboardContent(tab.dataset.dash);return;}
   const admin=event.target.closest('[data-admin-action]');if(admin){const action=admin.dataset.adminAction;if(action==='edit')adminEditor();if(action==='new')adminCreatePatient();if(action==='review')reviewApplication();if(action==='whatsapp')showToast('Demostración: no se abrió WhatsApp ni se envió un mensaje.');if(action==='publish')showToast('Demostración: no se guardó ni se envió ninguna actualización.');return;}
   if(event.target.closest('.modal-close'))closeModal();
@@ -99,5 +126,5 @@ document.addEventListener('click',(event)=>{
 });
 modal.addEventListener('click',(event)=>{if(event.target===modal)closeModal();});
 document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&modal.classList.contains('open'))closeModal();});
-document.addEventListener('submit',(event)=>{if(event.target.id==='enrollment-form'){event.preventDefault();showToast(`Vista previa: solicitud ${planNames[selectedPlan]} · ${selectedDuration} meses · ${selectedPayment==='transfer'?'transferencia':'consultorio'}. No se envió.`);closeModal();}if(event.target.id==='appointment-form'){event.preventDefault();showToast('Demostración: cita no guardada ni enviada.');closeModal();}if(event.target.id==='new-patient-form'){event.preventDefault();showToast('Demostración: expediente no creado.');closeModal();}});
+document.addEventListener('submit',async (event)=>{if(event.target.id==='enrollment-form'){event.preventDefault();const form=event.target;const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Enviando solicitud…';const values=Object.fromEntries(new FormData(form));const record={full_name:String(values.full_name||'').trim(),email:String(values.email||'').trim().toLowerCase(),phone:String(values.phone||'').trim(),objective:String(values.objective||'').trim(),plan_code:selectedPlan,plan_months:Number(selectedDuration),payment_preference:selectedPayment,consent_at:new Date().toISOString(),status:'new'};try{if(!publicClient)throw new Error('No hay conexión con el portal.');const {error}=await publicClient.from('patient_applications').insert(record);if(error)throw error;const phone=(siteSettings?.admin_whatsapp||'').replace(/\D/g,'');const msg=encodeURIComponent('Nueva solicitud ENT: '+record.full_name+', plan '+planNames[selectedPlan]+' por '+selectedDuration+' meses. Contacto: '+record.phone+'. Revisar en el administrador.');form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud recibida</h3><p>Gracias. El equipo de ENT revisará tus datos y se pondrá en contacto para coordinar tu valoración.</p>'+(phone?'<a class="button button-dark" target="_blank" rel="noopener" href="https://wa.me/'+phone+'?text='+msg+'">Avisar a ENT por WhatsApp</a><p class="form-note">WhatsApp abrirá un mensaje listo para enviar; toca “Enviar” en la aplicación.</p>':'')+'</div>';}catch(error){button.disabled=false;button.innerHTML='Reintentar envío <span>↗</span>';const fb=form.querySelector('#enrollment-feedback');if(fb)fb.textContent='No se pudo registrar la solicitud. Intenta de nuevo en unos minutos.';console.error(error);}}if(event.target.id==='appointment-form'){event.preventDefault();showToast('Demostración: cita no guardada ni enviada.');closeModal();}if(event.target.id==='new-patient-form'){event.preventDefault();showToast('Demostración: expediente no creado.');closeModal();}});
 document.querySelector('.mobile-menu').addEventListener('click',(event)=>{const button=event.currentTarget;const open=!document.querySelector('#mobile-panel').classList.contains('open');document.querySelector('#mobile-panel').classList.toggle('open',open);button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'Cerrar menú':'Abrir menú');button.textContent=open?'×':'☰';});
