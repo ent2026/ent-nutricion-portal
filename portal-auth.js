@@ -12,6 +12,7 @@
   let requestedView = 'patient';
   let activeUser = null;
   let activeProfile = null;
+  let pendingUser = null;
   let activeTab = 'resumen';
 
   const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
@@ -64,9 +65,10 @@
       ${dedicatedView ? '<a class="portal-return" href="./index.html">← Volver al sitio ENT</a>' : ''}
     </div>`);
   };
+  const showFirstPasswordForm = () => showModal(`<div class="dashboard login-wrap"><div class="modal-kicker">ACTIVA TU ACCESO</div><h2 id="modal-title">Crea una contraseña personal</h2><p class="modal-lede">Por seguridad, reemplaza tu clave temporal antes de entrar a tu perfil.</p><form id="ent-first-password-form"><label class="form-label" for="new-patient-password">Nueva contraseña</label><input class="input" id="new-patient-password" name="password" type="password" autocomplete="new-password" minlength="12" required /><label class="form-label" for="confirm-patient-password">Confirma la contraseña</label><input class="input" id="confirm-patient-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /><p class="login-error" id="ent-login-error" role="alert" hidden></p><button class="button button-dark form-submit" type="submit">Guardar y continuar →</button></form></div>`);
   const metric = (label, value, unit) => `<div class="metric"><small>${label}</small><strong>${value ?? '—'} <i>${unit}</i></strong></div>`;
-  const patientTabs = ['resumen', 'mediciones', 'dieta', 'entrenamiento', 'citas'];
-  const tabTitle = { resumen: 'Resumen', mediciones: 'Mediciones', dieta: 'Mi dieta', entrenamiento: 'Entrenamiento', citas: 'Consultas' };
+  const patientTabs = ['resumen', 'mediciones', 'dieta', 'entrenamiento', 'citas', 'avisos'];
+  const tabTitle = { resumen: 'Resumen', mediciones: 'Mediciones', dieta: 'Mi dieta', entrenamiento: 'Entrenamiento', citas: 'Consultas', avisos: 'Avisos' };
 
   const patientView = async (tab = activeTab) => {
     activeTab = tab;
@@ -100,6 +102,14 @@
       const { data, error } = await client.from('appointments').select('scheduled_at,appointment_type,location_or_link,status').eq('patient_id', userId).order('scheduled_at', { ascending: false });
       if (error) throw error;
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Mis consultas</h3><span>HISTORIAL</span></div>${data?.length ? data.map((item) => `<div class="hist-row"><span><b>${escapeHtml(dateTimeLabel(item.scheduled_at))}</b><br><small>${item.appointment_type === 'online' ? 'En línea' : 'Presencial'} · ${escapeHtml(item.status)}</small></span><small>${escapeHtml(item.location_or_link || 'Lugar por confirmar')}</small></div>`).join('') : '<p class="panel-note">Aún no hay consultas registradas.</p>'}</section>`;
+    } else if (tab === 'avisos') {
+      const [{ data: notices, error }, { data: reads, error: readsError }] = await Promise.all([
+        client.from('patient_notifications').select('id,category,title,message,created_at').eq('patient_id', userId).order('created_at', { ascending: false }).limit(50),
+        client.from('patient_notification_reads').select('notification_id').eq('patient_id', userId)
+      ]);
+      if (error) throw error;if(readsError)throw readsError;
+      const seen = new Set((reads || []).map((row) => row.notification_id));
+      inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Notificaciones de tu perfil</h3><span>${(notices||[]).filter(row=>!seen.has(row.id)).length} NUEVAS</span></div>${notices?.length ? notices.map((item) => `<article class="notice-row ${seen.has(item.id)?'is-read':'is-unread'}"><span class="notice-dot"></span><div><small>${escapeHtml(dateTimeLabel(item.created_at))} · ${escapeHtml(item.category)}</small><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p>${seen.has(item.id)?'':'<button class="text-link" data-mark-read="'+escapeHtml(item.id)+'">Marcar como leída</button>'}</div></article>`).join('') : '<p class="panel-note">Aquí aparecerán los avisos de tu plan, mediciones y consultas.</p>'}</section>`;
     }
     content.querySelector('#patient-live-content').innerHTML = inner;
   };
@@ -115,22 +125,27 @@
   };
 
   const renderAdmin = async () => {
-    const [profiles, applications, appointments] = await Promise.all([
-      client.from('patient_profiles').select('user_id,full_name,plan_code,status,created_at').order('created_at', { ascending: false }).limit(100),
+    const [profiles, applications, appointments, configuration] = await Promise.all([
+      client.from('patient_profiles').select('user_id,full_name,phone,plan_code,status,created_at').order('created_at', { ascending: false }).limit(100),
       client.from('patient_applications').select('id,full_name,email,phone,plan_code,plan_months,payment_preference,status,created_at').order('created_at', { ascending: false }).limit(100),
-      client.from('appointments').select('id,patient_id,scheduled_at,status,appointment_type').in('status', ['scheduled', 'confirmed']).order('scheduled_at', { ascending: true }).limit(100)
+      client.from('appointments').select('id,patient_id,scheduled_at,status,appointment_type').in('status', ['scheduled', 'confirmed']).order('scheduled_at', { ascending: true }).limit(100),
+      client.from('site_configuration').select('*').eq('id', 1).single()
     ]);
-    for (const result of [profiles, applications, appointments]) if (result.error) throw result.error;
+    for (const result of [profiles, applications, appointments, configuration]) if (result.error) throw result.error;
     const patients = profiles.data || [];
     const requests = applications.data || [];
     const upcoming = appointments.data || [];
-    const patientOptions = patients.map((row) => `<option value="${escapeHtml(row.user_id)}">${escapeHtml(row.full_name)} · ${escapeHtml(planLabel(row.plan_code))}</option>`).join('');
+    const patientOptions = patients.map((row) => `<option value="${escapeHtml(row.user_id)}" data-phone="${escapeHtml(row.phone||'')}">${escapeHtml(row.full_name)} · ${escapeHtml(planLabel(row.plan_code))}</option>`).join('');
     const emptyPatientOption = patients.length ? '' : '<option value="">Primero crea una cuenta de paciente</option>';
+    const settings = configuration.data;
+    const priceField = (label, name) => `<div><label class="form-label" for="${name}">${label}</label><input class="input" id="${name}" name="${name}" type="number" min="0" step="1" value="${settings[name] ?? ''}" placeholder="MXN" /></div>`;
     showModal(`<div class="dashboard">
       <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><h2 id="modal-title">Administración ENT</h2><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
       <div class="admin-summary-grid"><div><small>SOLICITUDES</small><strong>${requests.length}</strong><span>En bandeja</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-email">Correo electrónico</label><input class="input" id="manual-email" name="email" type="email" maxlength="320" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-plan">Plan</label><select class="select" id="manual-plan" name="plan_code"><option value="light">Light</option><option value="weight">Weight</option><option value="best">Best</option></select></div><div><label class="form-label" for="manual-months">Duración</label><select class="select" id="manual-months" name="plan_months"><option value="6">6 meses</option><option value="12">1 año</option></select></div></div><button class="button button-dark" type="submit">Crear cuenta y generar clave</button></form></section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="form-grid">${priceField('Light · 6 meses','price_light_6_months')}${priceField('Light · 1 año','price_light_12_months')}${priceField('Weight · 6 meses','price_weight_6_months')}${priceField('Weight · 1 año','price_weight_12_months')}${priceField('Best · 6 meses','price_best_6_months')}${priceField('Best · 1 año','price_best_12_months')}</div><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-clabe">CLABE interbancaria</label><input class="input" id="bank-clabe" name="bank_clabe" value="${escapeHtml(settings.bank_clabe||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
-        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>PLAN</th><th>DURACIÓN</th><th>CONTACTO</th><th>ESTADO</th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${row.plan_months} meses</td><td>${escapeHtml(row.phone)}<br>${escapeHtml(row.email)}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
+        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>PLAN</th><th>DURACIÓN</th><th>CONTACTO</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${row.plan_months} meses</td><td>${escapeHtml(row.phone)}<br>${escapeHtml(row.email)}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
       </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Pacientes activos</h3><span>${patients.length} EXPEDIENTES</span></div>
         ${patients.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>PACIENTE</th><th>PLAN</th><th>ESTADO</th><th>ALTA</th></tr></thead><tbody>${patients.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${escapeHtml(row.status)}</td><td>${escapeHtml(dateLabel(row.created_at))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay expedientes.</p>'}
@@ -172,6 +187,14 @@
     if (box) { box.textContent = message; box.hidden = false; return; }
     const panel = content.querySelector('#patient-live-content');
     if (panel) panel.innerHTML = `<section class="dash-panel"><p class="login-error" role="alert">${escapeHtml(message)}</p></section>`;
+    else content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<p class="login-error live-notice" role="alert">${escapeHtml(message)}</p>`);
+  };
+  const createPatientAccount = async (payload) => {
+    const { data, error } = await client.functions.invoke('admin-create-patient', { body: payload });
+    if (error) throw error;
+    if (!data || data.error) throw new Error(data?.error || 'No fue posible crear la cuenta.');
+    await renderAdmin();
+    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · comparte estos datos de forma privada</b><span>Usuario: ${escapeHtml(data.email)}</span><span>Clave temporal: <code>${escapeHtml(data.temporary_password)}</code></span><small>La contraseña temporal se muestra solo esta vez. El paciente debe cambiarla al iniciar.</small></section>`);
   };
   const enterPortal = async (user) => {
     activeUser = user;
@@ -201,7 +224,7 @@
     await renderPatient();
   };
 
-  document.addEventListener('click', (event) => {
+  document.addEventListener('click', async (event) => {
     const demo = event.target.closest('[data-open-demo]');
     if (demo) {
       event.preventDefault();
@@ -232,6 +255,21 @@
       patientView(tabButton.dataset.liveTab).catch((error) => setLoginError(error.message || 'No se pudo cargar esta sección.'));
       return;
     }
+    const readNotice = event.target.closest('[data-mark-read]');
+    if (readNotice) {
+      event.preventDefault();event.stopImmediatePropagation();
+      const { error } = await client.from('patient_notification_reads').upsert({ notification_id: readNotice.dataset.markRead, patient_id: activeUser.id }, { onConflict: 'notification_id,patient_id' });
+      if (error) { setLoginError('No se pudo actualizar el aviso.'); return; }
+      patientView('avisos').catch((error) => setLoginError(error.message || 'No se pudieron cargar los avisos.'));
+      return;
+    }
+    const createAccess = event.target.closest('[data-create-account]');
+    if (createAccess) {
+      event.preventDefault();event.stopImmediatePropagation();createAccess.disabled=true;createAccess.textContent='Creando acceso…';
+      try { await createPatientAccount({ application_id: createAccess.dataset.createAccount }); }
+      catch (error) { createAccess.disabled=false;createAccess.textContent='Reintentar alta';setLoginError(error.message || 'No se pudo crear el acceso.'); }
+      return;
+    }
     if (event.target.closest('[data-live-logout]')) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -241,6 +279,24 @@
 
   document.addEventListener('submit', async (event) => {
     const form = event.target;
+    if (form.id === 'ent-first-password-form') {
+      event.preventDefault();event.stopImmediatePropagation();
+      const values=Object.fromEntries(new FormData(form).entries());
+      if(values.password!==values.confirm_password){setLoginError('Las contraseñas no coinciden.');return;}
+      if(String(values.password).length<12){setLoginError('Usa al menos 12 caracteres.');return;}
+      const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Guardando…';
+      const { error }=await client.auth.updateUser({password:values.password,data:{must_change_password:false}});
+      if(error){setLoginError('No se pudo actualizar la contraseña. Intenta de nuevo.');button.disabled=false;button.textContent='Guardar y continuar →';return;}
+      const user=pendingUser;pendingUser=null;await enterPortal(user);return;
+    }
+    if (form.id === 'admin-create-patient-form') {
+      event.preventDefault();event.stopImmediatePropagation();
+      const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Creando cuenta…';
+      const values=Object.fromEntries(new FormData(form).entries());
+      try { await createPatientAccount({ full_name: values.full_name, email: values.email, phone: values.phone, plan_code: values.plan_code, plan_months: Number(values.plan_months) }); }
+      catch (error) { setLoginError(error.message || 'No se pudo crear la cuenta.');button.disabled=false;button.textContent='Reintentar alta'; }
+      return;
+    }
     if (form.id.startsWith('admin-') && form.id.endsWith('-form')) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -251,7 +307,30 @@
       const numericOrNull = (value) => value === '' || value === undefined ? null : Number(value);
       let table;
       let record;
-      if (form.id === 'admin-measurement-form') {
+      if (form.id === 'admin-config-form') {
+        const datetimeOrNull = (value) => value ? new Date(value).toISOString() : null;
+        record = {
+          price_light_6_months: numericOrNull(values.price_light_6_months), price_light_12_months: numericOrNull(values.price_light_12_months),
+          price_weight_6_months: numericOrNull(values.price_weight_6_months), price_weight_12_months: numericOrNull(values.price_weight_12_months),
+          price_best_6_months: numericOrNull(values.price_best_6_months), price_best_12_months: numericOrNull(values.price_best_12_months),
+          bank_account_holder: values.bank_account_holder.trim() || null, bank_name: values.bank_name.trim() || null,
+          bank_clabe: values.bank_clabe.trim() || null, transfer_instructions: values.transfer_instructions.trim() || null,
+          office_address: values.office_address.trim() || null, admin_whatsapp: values.admin_whatsapp.replace(/\D/g, '') || null,
+          announcement_title: values.announcement_title.trim() || null, announcement_body: values.announcement_body.trim() || null,
+          announcement_active: form.elements.announcement_active.checked,
+          announcement_starts_at: datetimeOrNull(values.announcement_starts_at), announcement_ends_at: datetimeOrNull(values.announcement_ends_at),
+          updated_by: activeUser.id, updated_at: new Date().toISOString()
+        };
+        try {
+          const { error } = await client.from('site_configuration').update(record).eq('id', 1);
+          if (error) throw error;
+          await renderAdmin();
+        } catch (error) {
+          setLoginError('No se pudo guardar la configuración. Revisa los datos e inténtalo de nuevo.');
+          submit.disabled = false;submit.textContent = 'Reintentar guardado';
+        }
+        return;
+      } else if (form.id === 'admin-measurement-form') {
         table = 'body_measurements';
         record = {
           patient_id: values.patient_id,
@@ -297,9 +376,16 @@
         };
       }
       try {
+        const selectedPatient = form.querySelector('select[name="patient_id"]')?.selectedOptions?.[0];
+        const patientPhone = (selectedPatient?.dataset.phone || '').replace(/\D/g, '');
+        const patientName = selectedPatient?.textContent.split(' · ')[0] || 'paciente';
         const { error } = await client.from(table).insert(record);
         if (error) throw error;
         await renderAdmin();
+        if (patientPhone) {
+          const waMessage = encodeURIComponent(`Hola ${patientName}. Hay una nueva notificación en tu perfil ENT. Ingresa a https://ent2026.github.io/ent-nutricion-portal/ para consultar tu actualización.`);
+          content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal whatsapp-ready"><b>Actualización publicada para ${escapeHtml(patientName)}</b><span>La notificación ya está en su perfil.</span><a class="button button-outline" href="https://wa.me/${patientPhone}?text=${waMessage}" target="_blank" rel="noopener">Abrir WhatsApp con aviso preparado</a><small>El mensaje se abrirá para que ENT lo revise y toque Enviar. No incluye información nutricional.</small></section>`);
+        }
       } catch (error) {
         const notice = content.querySelector('.live-notice');
         if (notice) notice.remove();
@@ -320,6 +406,7 @@
       const password = new FormData(form).get('password');
       const { data, error } = await client.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      if (data.user.user_metadata?.must_change_password) { pendingUser=data.user;showFirstPasswordForm();return; }
       await enterPortal(data.user);
     } catch (error) {
       setLoginError('No se pudo iniciar sesión. Revisa tus datos e inténtalo de nuevo.');
