@@ -24,7 +24,7 @@ function refreshPublicSettings(){
   }
   for(const plan of ['light','weight','best']){
     const a=document.querySelector('[data-plan-price-short="'+plan+'"]'),b=document.querySelector('[data-plan-price-long="'+plan+'"]'),main=document.querySelector('[data-plan-price="'+plan+'"]');
-    if(a)a.textContent=money(priceFor(plan,6));if(b)b.textContent=money(priceFor(plan,12));if(main)main.textContent='6 meses: '+money(priceFor(plan,6));
+    if(a)a.textContent=money(priceFor(plan,6));if(b)b.textContent=money(priceFor(plan,12));if(main)main.textContent='Precios por duración';
   }
   const host=document.querySelector('#public-announcement');if(!host||!siteSettings)return;
   const now=Date.now(),start=siteSettings.announcement_starts_at?Date.parse(siteSettings.announcement_starts_at):0,end=siteSettings.announcement_ends_at?Date.parse(siteSettings.announcement_ends_at):Infinity;
