@@ -105,3 +105,27 @@
 .portrait-profile em{font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:.08em}
 @media(max-width:900px){.hero-portrait-card{width:min(100%,360px);margin-right:0}}
 @media(max-width:650px){.hero-portrait-card{width:min(88vw,350px);margin:0 auto}.portrait-profile{margin-top:15px;padding:0 14px}.portrait-profile>span{max-width:320px}}
+
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.patient-directory-section{scroll-margin-top:20px}
+.patient-search{max-width:420px;margin:4px 0 13px}
+.patient-directory-list{display:grid;gap:7px;max-height:390px;overflow-y:auto}
+.patient-directory-item{display:flex;align-items:center;gap:12px;width:100%;padding:12px;background:#fbfbf8;border:1px solid #e2e5dd;border-radius:3px;text-align:left;cursor:pointer;transition:background .15s,border-color .15s}
+.patient-directory-item:hover{background:#f0f4ed;border-color:#aebfac}
+.patient-directory-item[hidden]{display:none}
+.patient-directory-avatar{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:50%;background:#dce7dc;color:#315a49;font:500 16px var(--serif)}
+.patient-directory-copy{min-width:0;display:grid;gap:4px}
+.patient-directory-copy strong{font-size:12px;color:var(--ink)}
+.patient-directory-copy small{font-size:9px;color:#78837b}
+.patient-directory-arrow{margin-left:auto;color:#476c53;font-size:10px;font-weight:700;white-space:nowrap}
+.patient-record{max-width:1000px;margin:0 auto}
+.patient-record>.button{margin-bottom:17px}
+.patient-record-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.patient-record-facts>div{display:grid;gap:5px;padding:12px;background:#f3f5ef;border-radius:2px;min-width:0}
+.patient-record-facts small{font-size:8px;color:#7b877d;letter-spacing:.06em}
+.patient-record-facts strong{font-size:11px;overflow-wrap:anywhere}
+.patient-record-item{padding:13px 0;border-bottom:1px solid #edf0ea}
+.patient-record-item:last-child{border-bottom:0}
+.patient-record-item .dash-panel-head h4{font:500 16px var(--serif);margin:0}
+.patient-record .dash-grid{grid-template-columns:1fr 1fr}
+@media(max-width:650px){.patient-record-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.patient-directory-item{gap:9px;padding:10px}.patient-directory-arrow{font-size:9px}.patient-record .dash-grid{grid-template-columns:1fr}.patient-record .dash-content-wide{grid-column:1}}
