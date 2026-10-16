@@ -85,3 +85,11 @@
 .photo-upload-hint{font-size:10px;color:#78837b;line-height:1.6}
 @media(max-width:900px){.hero-portrait-card{width:min(100%,360px);margin-right:0}.professional-credentials{font-size:9px}}
 @media(max-width:650px){.hero-portrait-card{width:min(88vw,350px);margin:0 auto}.hero{overflow:hidden}.professional-credentials{font-size:10px;max-width:360px}.portrait-profile{bottom:-15px}.admin-profile h2{font-size:20px}}
+
+/* Formación y cédula debajo del retrato */
+.portrait-profile{position:static;left:auto;right:auto;bottom:auto;transform:none;width:min(100%,390px);max-width:100%;margin:17px auto 0;padding:0 12px;background:transparent;border:0;border-radius:0;box-shadow:none;display:grid;justify-items:center;gap:7px;text-align:center}
+.portrait-profile strong{font:600 15px var(--display);color:var(--ink);white-space:normal}
+.portrait-profile>span{font-size:10px;line-height:1.55;color:#65716b}
+.portrait-profile>b{font-size:10px;line-height:1.5;font-weight:600;color:#315a49;letter-spacing:.02em}
+.portrait-profile em{font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:.08em}
+@media(max-width:650px){.portrait-profile{margin-top:15px;padding:0 14px}.portrait-profile>span{max-width:320px}}
