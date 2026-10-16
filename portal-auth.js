@@ -214,7 +214,15 @@
     const bmi = (row) => row?.weight_kg && row?.height_cm ? (Number(row.weight_kg)/(Number(row.height_cm)/100)**2).toFixed(1) : '—';
     const photos = await renderPhotoCards(patientId, false);
     showModal(`<div class="dashboard patient-record">
-      <button class="button button-outline" type="button" data-back-patient-directory>← Volver al directorio</button>
+      <div class="patient-record-actions"><button class="button button-outline" type="button" data-back-patient-directory>← Volver al directorio</button><button class="button button-danger" type="button" data-toggle-patient-delete>Dar de baja y eliminar</button></div>
+      <form class="patient-delete-confirm" id="admin-delete-patient-form" data-patient-id="${escapeHtml(patientId)}" data-confirm-username="${escapeHtml(profile.username||'')}" hidden>
+        <h3>Eliminar expediente definitivamente</h3>
+        <p>Se borrarán la cuenta de acceso, mediciones, dietas, entrenamientos, consultas, avisos y archivos privados de este paciente. Esta acción no se puede deshacer.</p>
+        <label class="form-label" for="patient-delete-confirmation">Para confirmar, escribe el usuario <strong>${escapeHtml(profile.username||'')}</strong></label>
+        <input class="input" id="patient-delete-confirmation" name="confirmation" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" required />
+        <p class="login-error" id="patient-delete-error" role="alert" hidden></p>
+        <div class="patient-delete-actions"><button class="button button-danger" type="submit" disabled>Eliminar expediente</button><button class="button button-outline" type="button" data-cancel-patient-delete>Cancelar</button></div>
+      </form>
       <div class="dashboard-header"><div><div class="modal-kicker">EXPEDIENTE INDIVIDUAL</div><div class="profile-head"><div class="avatar"><span>${escapeHtml(String(profile.full_name||'P').slice(0,1).toUpperCase())}</span></div><div><h2 id="modal-title">${escapeHtml(profile.full_name)}</h2><p>${escapeHtml(profile.username||'Sin usuario')} · ${escapeHtml(planLabel(profile.plan_code))} · ${escapeHtml(profile.status)}</p></div></div></div></div>
       <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Datos del paciente</h3><span>PERFIL</span></div><div class="patient-record-facts"><div><small>USUARIO</small><strong>${escapeHtml(profile.username||'—')}</strong></div><div><small>TELÉFONO / WHATSAPP</small><strong>${escapeHtml(profile.phone||'—')}</strong></div><div><small>PLAN</small><strong>${escapeHtml(planLabel(profile.plan_code))} · ${escapeHtml(profile.plan_months)} meses</strong></div><div><small>ESTADO</small><strong>${escapeHtml(profile.status)}</strong></div><div><small>INICIO DE MEMBRESÍA</small><strong>${escapeHtml(dateLabel(profile.membership_started_on))}</strong></div><div><small>FIN DE MEMBRESÍA</small><strong>${escapeHtml(dateLabel(profile.membership_ends_on))}</strong></div><div><small>ALTA</small><strong>${escapeHtml(dateLabel(profile.created_at))}</strong></div></div></section>
       <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Última valoración</h3><span>${latest ? escapeHtml(dateLabel(latest.measured_on)) : 'SIN VALORACIONES'}</span></div><div class="metric-grid">${metric('PESO',latest?.weight_kg,'kg')}${metric('GRASA CORPORAL',latest?.body_fat_pct,'%')}${metric('MASA MUSCULAR',latest?.muscle_mass_kg,'kg')}${metric('IMC',bmi(latest),'')}${metric('GRASA VISCERAL',latest?.visceral_fat_index,'')}${metric('CINTURA',latest?.waist_cm,'cm')}</div>${measurements.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>FECHA</th><th>PESO</th><th>IMC</th><th>GRASA</th><th>MÚSCULO</th><th>VISCERAL</th><th>CINTURA</th><th>CADERA</th></tr></thead><tbody>${measurements.map((row)=>`<tr><td>${escapeHtml(dateLabel(row.measured_on))}</td><td>${row.weight_kg??'—'} kg</td><td>${bmi(row)}</td><td>${row.body_fat_pct??'—'} %</td><td>${row.muscle_mass_kg??'—'} kg</td><td>${row.visceral_fat_index??'—'}</td><td>${row.waist_cm??'—'} cm</td><td>${row.hip_cm??'—'} cm</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay mediciones registradas.</p>'}</section>
@@ -495,6 +503,20 @@
       setPhotoFeedback('Foto eliminada del expediente.');
       await renderAdminPhotoGallery(patientId); return;
     }
+    const showDeleteForm = event.target.closest('[data-toggle-patient-delete]');
+    if (showDeleteForm) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const form = content.querySelector('#admin-delete-patient-form');
+      if (form) { form.hidden = false; form.querySelector('#patient-delete-confirmation')?.focus(); }
+      return;
+    }
+    const cancelDelete = event.target.closest('[data-cancel-patient-delete]');
+    if (cancelDelete) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const form = content.querySelector('#admin-delete-patient-form');
+      form?.reset(); if (form) form.hidden = true;
+      return;
+    }
     const readNotice = event.target.closest('[data-mark-read]');
     if (readNotice) {
       event.preventDefault();event.stopImmediatePropagation();
@@ -539,6 +561,12 @@
   });
 
   document.addEventListener('input', (event) => {
+    if (event.target.id === 'patient-delete-confirmation') {
+      const form = event.target.closest('#admin-delete-patient-form');
+      const submit = form?.querySelector('[type="submit"]');
+      if (submit) submit.disabled = event.target.value.trim() !== form.dataset.confirmUsername;
+      return;
+    }
     if (event.target.id === 'admin-patient-search') {
       const query=String(event.target.value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('es');
       content.querySelectorAll('[data-open-patient]').forEach((button) => {
@@ -556,6 +584,30 @@
 
   document.addEventListener('submit', async (event) => {
     const form = event.target;
+    if (form.id === 'admin-delete-patient-form') {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const input = form.querySelector('#patient-delete-confirmation');
+      const button = form.querySelector('[type="submit"]');
+      const errorBox = form.querySelector('#patient-delete-error');
+      if (input.value.trim() !== form.dataset.confirmUsername) {
+        errorBox.textContent = 'El usuario escrito no coincide.';
+        errorBox.hidden = false; return;
+      }
+      const confirmed = window.confirm('¿Eliminar definitivamente este expediente y todos sus datos? Esta acción no se puede deshacer.');
+      if (!confirmed) return;
+      button.disabled = true; button.textContent = 'Eliminando…';
+      errorBox.hidden = true;
+      const { data, error } = await client.functions.invoke('admin-delete-patient', {
+        body: { patient_id: form.dataset.patientId, confirm_username: input.value.trim() }
+      });
+      if (error || data?.error) {
+        errorBox.textContent = data?.error || 'No se pudo completar la eliminación. El expediente sigue disponible para reintentar.';
+        errorBox.hidden = false; button.disabled = false; button.textContent = 'Reintentar eliminación'; return;
+      }
+      await renderAdmin();
+      content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', '<p class="credential-reveal" role="status">El paciente y su expediente fueron eliminados.</p>');
+      return;
+    }
     if (form.id === 'ent-first-password-form') {
       event.preventDefault();event.stopImmediatePropagation();
       const values=Object.fromEntries(new FormData(form).entries());
