@@ -10,11 +10,6 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 const cleanString = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 const normalizeUsername = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
-const newTemporaryPassword = () => {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-  const bytes = crypto.getRandomValues(new Uint8Array(24));
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
-};
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -41,6 +36,7 @@ Deno.serve(async (request) => {
   let planCode = cleanString(input.plan_code, 20);
   let planMonths = Number(input.plan_months);
   let applicationId = cleanString(input.application_id, 50);
+  const password = typeof input.initial_password === 'string' ? input.initial_password : '';
 
   if (applicationId) {
     const { data: application, error } = await service.from('patient_applications')
@@ -54,8 +50,8 @@ Deno.serve(async (request) => {
     planMonths = application.plan_months;
   }
 
-  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !['light', 'weight', 'best'].includes(planCode) || ![6, 12].includes(planMonths)) {
-    return json({ error: 'Revisa nombre, usuario, teléfono y membresía.' }, 400);
+  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !['light', 'weight', 'best'].includes(planCode) || ![6, 12].includes(planMonths) || password.length < 12 || password.length > 72) {
+    return json({ error: 'Revisa nombre, usuario, teléfono, membresía y contraseña (12 a 72 caracteres).' }, 400);
   }
 
   const requestedUsername = username;
@@ -74,7 +70,7 @@ Deno.serve(async (request) => {
   const { data: created, error: createError } = await service.auth.admin.createUser({
     email, password, email_confirm: true,
     app_metadata: { role: 'patient' },
-    user_metadata: { full_name: fullName, username, must_change_password: true },
+    user_metadata: { full_name: fullName, username },
   });
   if (createError || !created.user) return json({ error: 'No se pudo crear la cuenta. El usuario podría estar ocupado; intenta con otra variante.' }, 409);
 
@@ -95,5 +91,5 @@ Deno.serve(async (request) => {
     }
   }
 
-  return json({ username, temporary_password: password, full_name: fullName });
+  return json({ username, initial_password: password, full_name: fullName, phone });
 });
