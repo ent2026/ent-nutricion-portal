@@ -161,3 +161,31 @@ using (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin')
 with check (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
 create policy "admin deletes appointments" on public.appointments for delete to authenticated
 using (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
+
+-- Private progress-photo storage. Patient objects are isolated by their auth UUID folder.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('patient-progress', 'patient-progress', false, 5242880, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update
+set public = false, file_size_limit = 5242880, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists ent_progress_photos_read on storage.objects;
+create policy ent_progress_photos_read on storage.objects for select to authenticated
+using (
+  bucket_id = 'patient-progress'
+  and (
+    ((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin'
+    or (storage.foldername(name))[1] = (select auth.uid())::text
+  )
+);
+drop policy if exists ent_progress_photos_admin_upload on storage.objects;
+create policy ent_progress_photos_admin_upload on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'patient-progress'
+  and ((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin'
+);
+drop policy if exists ent_progress_photos_admin_delete on storage.objects;
+create policy ent_progress_photos_admin_delete on storage.objects for delete to authenticated
+using (
+  bucket_id = 'patient-progress'
+  and ((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin'
+);

@@ -69,8 +69,39 @@
   };
   const showFirstPasswordForm = () => showModal(`<div class="dashboard login-wrap"><div class="modal-kicker">ACTIVA TU ACCESO</div><h2 id="modal-title">Crea una contraseña personal</h2><p class="modal-lede">Por seguridad, reemplaza tu clave temporal antes de entrar a tu perfil.</p><form id="ent-first-password-form"><label class="form-label" for="new-patient-password">Nueva contraseña</label><input class="input" id="new-patient-password" name="password" type="password" autocomplete="new-password" minlength="12" required /><label class="form-label" for="confirm-patient-password">Confirma la contraseña</label><input class="input" id="confirm-patient-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /><p class="login-error" id="ent-login-error" role="alert" hidden></p><button class="button button-dark form-submit" type="submit">Guardar y continuar →</button></form></div>`);
   const metric = (label, value, unit) => `<div class="metric"><small>${label}</small><strong>${value ?? '—'} <i>${unit}</i></strong></div>`;
-  const patientTabs = ['resumen', 'mediciones', 'dieta', 'entrenamiento', 'citas', 'avisos'];
-  const tabTitle = { resumen: 'Resumen', mediciones: 'Mediciones', dieta: 'Mi dieta', entrenamiento: 'Entrenamiento', citas: 'Consultas', avisos: 'Avisos' };
+  const photoBucket = 'patient-progress';
+  const isSupportedPhoto = (file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && file.size <= 5 * 1024 * 1024;
+  const photoExtension = (file) => ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type] || 'jpg');
+  const renderPhotoCards = async (patientId, isAdmin = false) => {
+    const { data, error } = await client.storage.from(photoBucket).list(patientId, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) throw error;
+    const files = (data || []).filter((file) => file.id && /\.(jpe?g|png|webp)$/i.test(file.name));
+    const cards = await Promise.all(files.map(async (file) => {
+      const path = `${patientId}/${file.name}`;
+      const { data: signed, error: urlError } = await client.storage.from(photoBucket).createSignedUrl(path, 600);
+      if (urlError) throw urlError;
+      return `<article class="progress-photo"><img src="${escapeHtml(signed.signedUrl)}" alt="Foto de progreso del paciente" loading="lazy" /><small>${escapeHtml(dateLabel(file.created_at || file.updated_at))}</small>${isAdmin ? `<div class="progress-photo-actions"><button class="button button-outline" type="button" data-replace-patient-photo="${escapeHtml(file.name)}">Reemplazar</button><button class="button button-outline" type="button" data-delete-patient-photo="${escapeHtml(file.name)}">Eliminar</button></div>` : ''}</article>`;
+    }));
+    return cards;
+  };
+  const renderAdminPhotoGallery = async (patientId) => {
+    const gallery = content.querySelector('#admin-photo-gallery');
+    if (!gallery) return;
+    if (!patientId) { gallery.innerHTML = '<p class="panel-note">Selecciona un paciente para ver sus fotos.</p>'; return; }
+    gallery.innerHTML = '<p class="panel-note">Cargando fotos privadas…</p>';
+    try {
+      const cards = await renderPhotoCards(patientId, true);
+      gallery.innerHTML = cards.length ? `<div class="progress-photo-grid">${cards.join('')}</div>` : '<p class="panel-note">Este expediente aún no tiene fotos de progreso.</p>';
+    } catch (error) {
+      gallery.innerHTML = '<p class="login-error" role="alert">No se pudieron cargar las fotos de este expediente.</p>';
+    }
+  };
+  const setPhotoFeedback = (message, isError = false) => {
+    const box = content.querySelector('#admin-photo-status');
+    if (box) { box.textContent = message; box.classList.toggle('error', isError); }
+  };
+  const patientTabs = ['resumen', 'mediciones', 'dieta', 'entrenamiento', 'fotos', 'citas', 'avisos'];
+  const tabTitle = { resumen: 'Resumen', mediciones: 'Mediciones', dieta: 'Mi dieta', entrenamiento: 'Entrenamiento', citas: 'Consultas', avisos: 'Avisos', fotos: 'Fotos de progreso' };
 
   const patientView = async (tab = activeTab) => {
     activeTab = tab;
@@ -112,6 +143,9 @@
       if (error) throw error;if(readsError)throw readsError;
       const seen = new Set((reads || []).map((row) => row.notification_id));
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Notificaciones de tu perfil</h3><span>${(notices||[]).filter(row=>!seen.has(row.id)).length} NUEVAS</span></div>${notices?.length ? notices.map((item) => `<article class="notice-row ${seen.has(item.id)?'is-read':'is-unread'}"><span class="notice-dot"></span><div><small>${escapeHtml(dateTimeLabel(item.created_at))} · ${escapeHtml(item.category)}</small><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p>${seen.has(item.id)?'':'<button class="text-link" data-mark-read="'+escapeHtml(item.id)+'">Marcar como leída</button>'}</div></article>`).join('') : '<p class="panel-note">Aquí aparecerán los avisos de tu plan, mediciones y consultas.</p>'}</section>`;
+    } else if (tab === 'fotos') {
+      const cards = await renderPhotoCards(userId, false);
+      inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Mis fotos de progreso</h3><span>SOLO VISIBLES PARA TI Y ENT</span></div>${cards.length ? `<div class="progress-photo-grid patient-photo-grid">${cards.join('')}</div>` : '<p class="panel-note">Aún no hay fotos de progreso en tu perfil. Tu nutriólogo las añadirá cuando lo considere útil para tu seguimiento.</p>'}</section>`;
     }
     content.querySelector('#patient-live-content').innerHTML = inner;
   };
@@ -142,7 +176,7 @@
     const settings = configuration.data;
     const priceField = (label, name) => `<div><label class="form-label" for="${name}">${label}</label><input class="input" id="${name}" name="${name}" type="number" min="0" step="1" value="${settings[name] ?? ''}" placeholder="MXN" /></div>`;
     showModal(`<div class="dashboard">
-      <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><h2 id="modal-title">Administración ENT</h2><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
+      <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><div class="profile-head admin-profile"><img class="avatar-photo" src="assets/esteban-tellez.jpg" alt="Esteban Téllez" /><div><h2 id="modal-title">Esteban Téllez</h2><p>Administración ENT</p></div></div><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
       <div class="admin-summary-grid"><div><small>SOLICITUDES</small><strong>${requests.length}</strong><span>En bandeja</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-plan">Plan</label><select class="select" id="manual-plan" name="plan_code"><option value="light">Light</option><option value="weight">Weight</option><option value="best">Best</option></select></div><div><label class="form-label" for="manual-months">Duración</label><select class="select" id="manual-months" name="plan_months"><option value="6">6 meses</option><option value="12">1 año</option></select></div></div><p class="form-note">El usuario se sugiere con nombre y apellido. La contraseña temporal se genera de forma segura al crear la cuenta.</p><button class="button button-dark" type="submit">Crear cuenta y generar clave</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="form-grid">${priceField('Light · 6 meses','price_light_6_months')}${priceField('Light · 1 año','price_light_12_months')}${priceField('Weight · 6 meses','price_weight_6_months')}${priceField('Weight · 1 año','price_weight_12_months')}${priceField('Best · 6 meses','price_best_6_months')}${priceField('Best · 1 año','price_best_12_months')}</div><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-clabe">CLABE interbancaria</label><input class="input" id="bank-clabe" name="bank_clabe" value="${escapeHtml(settings.bank_clabe||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
@@ -152,6 +186,7 @@
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Pacientes activos</h3><span>${patients.length} EXPEDIENTES</span></div>
         ${patients.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>PACIENTE</th><th>PLAN</th><th>ESTADO</th><th>ALTA</th></tr></thead><tbody>${patients.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${escapeHtml(row.status)}</td><td>${escapeHtml(dateLabel(row.created_at))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay expedientes.</p>'}
       </section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Fotos de progreso</h3><span>ARCHIVO PRIVADO POR PACIENTE</span></div><label class="form-label" for="admin-photo-patient">Paciente</label><select class="select" id="admin-photo-patient"><option value="">Selecciona un paciente</option>${patientOptions}</select><form class="live-admin-form" id="admin-photo-form"><label class="form-label" for="admin-photo-files">Agregar fotografías</label><input class="input" id="admin-photo-files" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple required /><small class="photo-upload-hint">JPG, PNG o WebP · máximo 5 MB por archivo y hasta 8 fotos por carga. Solo ENT y el paciente pueden verlas.</small><button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar fotos</button><p id="admin-photo-status" class="photo-feedback" role="status" aria-live="polite"></p></form><div id="admin-photo-gallery"><p class="panel-note">Selecciona un paciente para ver sus fotos.</p></div></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Registrar valoración</h3><span>MEDICIONES</span></div>
         <form class="live-admin-form" id="admin-measurement-form"><label class="form-label" for="measurement-patient">Paciente</label><select class="select" id="measurement-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
           <div class="form-grid"><div><label class="form-label" for="measurement-date">Fecha</label><input class="input" id="measurement-date" name="measured_on" type="date" required value="${new Date().toISOString().slice(0, 10)}" /></div><div><label class="form-label" for="measurement-weight">Peso (kg)</label><input class="input" id="measurement-weight" name="weight_kg" type="number" min="0" max="500" step="0.01" /></div><div><label class="form-label" for="measurement-height">Estatura (cm)</label><input class="input" id="measurement-height" name="height_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-fat">Grasa corporal (%)</label><input class="input" id="measurement-fat" name="body_fat_pct" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-muscle">Masa muscular (kg)</label><input class="input" id="measurement-muscle" name="muscle_mass_kg" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-visceral">Índice visceral</label><input class="input" id="measurement-visceral" name="visceral_fat_index" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-waist">Cintura (cm)</label><input class="input" id="measurement-waist" name="waist_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-hip">Cadera (cm)</label><input class="input" id="measurement-hip" name="hip_cm" type="number" min="0" max="300" step="0.01" /></div></div>
@@ -182,6 +217,10 @@
       </section>
       <div class="preview-callout">Las mediciones, dietas, entrenamientos y consultas que guardes aquí se asociarán al expediente seleccionado. Las cuentas nuevas todavía deben habilitarse por separado.</div>
     </div>`);
+    if (patients.length) {
+      const photoSelect = content.querySelector('#admin-photo-patient');
+      if (photoSelect) { photoSelect.value = patients[0].user_id; await renderAdminPhotoGallery(photoSelect.value); }
+    }
   };
 
   const setLoginError = (message) => {
@@ -257,6 +296,36 @@
       patientView(tabButton.dataset.liveTab).catch((error) => setLoginError(error.message || 'No se pudo cargar esta sección.'));
       return;
     }
+    const replacePhoto = event.target.closest('[data-replace-patient-photo]');
+    if (replacePhoto) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const patientId = content.querySelector('#admin-photo-patient')?.value;
+      const oldName = replacePhoto.dataset.replacePatientPhoto;
+      const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/jpeg,image/png,image/webp';
+      picker.onchange = async () => {
+        const file = picker.files?.[0]; if (!file) return;
+        if (!isSupportedPhoto(file)) { setPhotoFeedback('Usa una imagen JPG, PNG o WebP de máximo 5 MB.', true); return; }
+        setPhotoFeedback('Subiendo la foto nueva…');
+        const newName = `${Date.now()}-${crypto.randomUUID()}.${photoExtension(file)}`;
+        const { error: uploadError } = await client.storage.from(photoBucket).upload(`${patientId}/${newName}`, file, { cacheControl: '3600', contentType: file.type, upsert: false });
+        if (uploadError) { setPhotoFeedback('No se pudo cargar la nueva foto; la anterior se conserva.', true); return; }
+        const { error: removeError } = await client.storage.from(photoBucket).remove([`${patientId}/${oldName}`]);
+        if (removeError) setPhotoFeedback('La foto nueva se cargó; la anterior sigue guardada y puedes eliminarla después.', true);
+        else setPhotoFeedback('Foto reemplazada correctamente.');
+        await renderAdminPhotoGallery(patientId);
+      };
+      picker.click(); return;
+    }
+    const deletePhoto = event.target.closest('[data-delete-patient-photo]');
+    if (deletePhoto) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const patientId = content.querySelector('#admin-photo-patient')?.value;
+      if (!patientId || !window.confirm('¿Eliminar esta foto de progreso?')) return;
+      const { error } = await client.storage.from(photoBucket).remove([`${patientId}/${deletePhoto.dataset.deletePatientPhoto}`]);
+      if (error) { setPhotoFeedback('No se pudo eliminar la foto.'); return; }
+      setPhotoFeedback('Foto eliminada del expediente.');
+      await renderAdminPhotoGallery(patientId); return;
+    }
     const readNotice = event.target.closest('[data-mark-read]');
     if (readNotice) {
       event.preventDefault();event.stopImmediatePropagation();
@@ -278,6 +347,10 @@
       client?.auth.signOut().finally(() => { activeUser = null; activeProfile = null; closeModal(); showLogin(requestedView); });
     }
   }, true);
+
+  document.addEventListener('change', (event) => {
+    if (event.target.id === 'admin-photo-patient') renderAdminPhotoGallery(event.target.value);
+  });
 
   document.addEventListener('input', (event) => {
     if (event.target.id === 'manual-username') event.target.dataset.userEdited = 'true';
@@ -305,6 +378,31 @@
       const values=Object.fromEntries(new FormData(form).entries());
       try { await createPatientAccount({ full_name: values.full_name, username: values.username, phone: values.phone, plan_code: values.plan_code, plan_months: Number(values.plan_months) }); }
       catch (error) { setLoginError(error.message || 'No se pudo crear la cuenta.');button.disabled=false;button.textContent='Reintentar alta'; }
+      return;
+    }
+    if (form.id === 'admin-photo-form') {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const patientId = content.querySelector('#admin-photo-patient')?.value;
+      const files = Array.from(form.elements.photos.files || []);
+      if (!patientId) { setPhotoFeedback('Selecciona el expediente al que pertenecen las fotos.', true); return; }
+      if (!files.length || files.length > 8) { setPhotoFeedback('Selecciona de 1 a 8 fotografías por carga.', true); return; }
+      if (files.some((file) => !isSupportedPhoto(file))) { setPhotoFeedback('Cada imagen debe ser JPG, PNG o WebP y pesar máximo 5 MB.', true); return; }
+      const button = form.querySelector('[type="submit"]'); button.disabled = true; button.textContent = 'Subiendo…';
+      let uploaded = 0;
+      try {
+        for (const file of files) {
+          const name = `${Date.now()}-${crypto.randomUUID()}.${photoExtension(file)}`;
+          const { error } = await client.storage.from(photoBucket).upload(`${patientId}/${name}`, file, { cacheControl: '3600', contentType: file.type, upsert: false });
+          if (error) throw error;
+          uploaded++;
+        }
+        form.reset();
+        setPhotoFeedback(`${uploaded} ${uploaded === 1 ? 'foto guardada' : 'fotos guardadas'} en el expediente privado.`);
+        await renderAdminPhotoGallery(patientId);
+      } catch (error) {
+        setPhotoFeedback(`Se guardaron ${uploaded} fotos; hubo un problema con la siguiente carga. Revisa el expediente y vuelve a intentar.`, true);
+        await renderAdminPhotoGallery(patientId);
+      } finally { button.disabled = false; button.textContent = 'Guardar fotos'; }
       return;
     }
     if (form.id.startsWith('admin-') && form.id.endsWith('-form')) {
