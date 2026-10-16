@@ -112,9 +112,15 @@ with check (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
 create policy "admin deletes profiles" on public.patient_profiles for delete to authenticated
 using (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
 
-create policy "admin manages applications" on public.patient_applications for all to authenticated
+create policy "admin reads applications" on public.patient_applications for select to authenticated
+using (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
+create policy "admin inserts applications" on public.patient_applications for insert to authenticated
+with check (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
+create policy "admin updates applications" on public.patient_applications for update to authenticated
 using (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin')
 with check (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
+create policy "admin deletes applications" on public.patient_applications for delete to authenticated
+using (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
 
 create policy "patient or admin reads measurements" on public.body_measurements for select to authenticated
 using ((select auth.uid()) = patient_id or ((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
