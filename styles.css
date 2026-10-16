@@ -160,3 +160,5 @@
 .admin-workspace-panel[hidden]{display:none}
 @media(max-width:760px){.consultation-heading{grid-template-columns:1fr;gap:14px}.consultation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.consultation-card{padding:17px;min-height:240px}.consultation-details{grid-template-columns:1fr}.admin-workspace-tabs{position:static}}
 @media(max-width:480px){.consultation-grid{grid-template-columns:1fr}.consultation-card{min-height:auto}.consultation-card p{min-height:0}.consultation-footnote{display:grid}.admin-workspace-tab{font-size:.78rem;padding:10px 4px}}
+
+.patient-record-actions,.patient-delete-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 16px}.button-danger{background:#8d342d;border:1px solid #8d342d;color:#fff}.button-danger:hover{background:#742a25}.patient-delete-confirm{margin:0 0 20px;padding:20px;border:1px solid #d9b1ad;background:#fff7f5;border-radius:4px}.patient-delete-confirm h3{margin:0 0 8px;font:500 22px var(--serif)}.patient-delete-confirm p{font-size:12px;line-height:1.7;color:#6c5a58}.patient-delete-confirm .form-label{margin-top:12px}.patient-delete-confirm[hidden]{display:none}
