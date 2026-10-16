@@ -141,7 +141,17 @@
     } else if (tab === 'dieta') {
       const { data, error } = await client.from('nutrition_updates').select('*').eq('patient_id', userId).eq('is_published', true).order('created_at', { ascending: false });
       if (error) throw error;
-      inner = data?.length ? data.map((item) => `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div><div class="live-plan-text">${escapeHtml(item.diet_content)}</div>${item.recommendations ? `<div class="panel-note">${escapeHtml(item.recommendations)}</div>` : ''}</section>`).join('') : '<section class="dash-panel dash-content-wide"><h3>Aún no hay una dieta publicada</h3><p class="panel-note">La actualización aparecerá aquí cuando tu nutriólogo la publique.</p></section>';
+      inner = data?.length ? (await Promise.all(data.map(async (item) => {
+        let pdfUrl = '';
+        if (item.diet_pdf_path) {
+          const { data: signed, error: signedError } = await client.storage.from('nutrition-files').createSignedUrl(item.diet_pdf_path, 1800);
+          if (signedError) throw signedError;
+          pdfUrl = signed.signedUrl;
+        }
+        const dietText = item.diet_content && item.diet_content !== 'Consulta el PDF adjunto de tu dieta.' ? `<div class="live-plan-text">${escapeHtml(item.diet_content)}</div>` : '';
+        const pdfViewer = pdfUrl ? `<div class="diet-pdf-actions"><a class="button button-dark" href="${escapeHtml(pdfUrl)}" target="_blank" rel="noopener">Abrir PDF de dieta ↗</a><small>${escapeHtml(item.diet_pdf_name || 'Documento PDF')}</small></div><iframe class="diet-pdf-viewer" src="${escapeHtml(pdfUrl)}#view=FitH" title="Dieta en PDF: ${escapeHtml(item.title)}" loading="lazy"></iframe>` : '';
+        return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${pdfViewer}${dietText}${item.recommendations ? `<div class="panel-note">${escapeHtml(item.recommendations)}</div>` : ''}</section>`;
+      }))).join('') : '<section class="dash-panel dash-content-wide"><h3>Aún no hay una dieta publicada</h3><p class="panel-note">La actualización aparecerá aquí cuando tu nutriólogo la publique.</p></section>';
     } else if (tab === 'entrenamiento') {
       const { data, error } = await client.from('training_plans').select('*').eq('patient_id', userId).eq('is_published', true).order('created_at', { ascending: false });
       if (error) throw error;
@@ -180,7 +190,7 @@
     const results = await Promise.all([
       client.from('patient_profiles').select('*').eq('user_id', patientId).single(),
       client.from('body_measurements').select('*').eq('patient_id', patientId).order('measured_on', { ascending: false }).limit(30),
-      client.from('nutrition_updates').select('title,diet_content,recommendations,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
+      client.from('nutrition_updates').select('title,diet_content,recommendations,diet_pdf_path,diet_pdf_name,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
       client.from('training_plans').select('title,plan_content,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
       client.from('appointments').select('scheduled_at,appointment_type,location_or_link,status').eq('patient_id', patientId).order('scheduled_at', { ascending: false }).limit(20),
       client.from('patient_notifications').select('category,title,message,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(30)
@@ -190,6 +200,12 @@
     const profile = profileResult.data;
     const measurements = measurementsResult.data || [];
     const diets = dietsResult.data || [];
+    const dietsWithPdf = await Promise.all(diets.map(async (item) => {
+      if (!item.diet_pdf_path) return { ...item, pdf_url: '' };
+      const { data: signed, error: signedError } = await client.storage.from('nutrition-files').createSignedUrl(item.diet_pdf_path, 1800);
+      if (signedError) throw signedError;
+      return { ...item, pdf_url: signed.signedUrl };
+    }));
     const training = trainingResult.data || [];
     const appointments = appointmentsResult.data || [];
     const notices = noticesResult.data || [];
@@ -201,7 +217,7 @@
       <div class="dashboard-header"><div><div class="modal-kicker">EXPEDIENTE INDIVIDUAL</div><div class="profile-head"><div class="avatar"><span>${escapeHtml(String(profile.full_name||'P').slice(0,1).toUpperCase())}</span></div><div><h2 id="modal-title">${escapeHtml(profile.full_name)}</h2><p>${escapeHtml(profile.username||'Sin usuario')} · ${escapeHtml(planLabel(profile.plan_code))} · ${escapeHtml(profile.status)}</p></div></div></div></div>
       <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Datos del paciente</h3><span>PERFIL</span></div><div class="patient-record-facts"><div><small>USUARIO</small><strong>${escapeHtml(profile.username||'—')}</strong></div><div><small>TELÉFONO / WHATSAPP</small><strong>${escapeHtml(profile.phone||'—')}</strong></div><div><small>PLAN</small><strong>${escapeHtml(planLabel(profile.plan_code))} · ${escapeHtml(profile.plan_months)} meses</strong></div><div><small>ESTADO</small><strong>${escapeHtml(profile.status)}</strong></div><div><small>INICIO DE MEMBRESÍA</small><strong>${escapeHtml(dateLabel(profile.membership_started_on))}</strong></div><div><small>FIN DE MEMBRESÍA</small><strong>${escapeHtml(dateLabel(profile.membership_ends_on))}</strong></div><div><small>ALTA</small><strong>${escapeHtml(dateLabel(profile.created_at))}</strong></div></div></section>
       <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Última valoración</h3><span>${latest ? escapeHtml(dateLabel(latest.measured_on)) : 'SIN VALORACIONES'}</span></div><div class="metric-grid">${metric('PESO',latest?.weight_kg,'kg')}${metric('GRASA CORPORAL',latest?.body_fat_pct,'%')}${metric('MASA MUSCULAR',latest?.muscle_mass_kg,'kg')}${metric('IMC',bmi(latest),'')}${metric('GRASA VISCERAL',latest?.visceral_fat_index,'')}${metric('CINTURA',latest?.waist_cm,'cm')}</div>${measurements.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>FECHA</th><th>PESO</th><th>IMC</th><th>GRASA</th><th>MÚSCULO</th><th>VISCERAL</th><th>CINTURA</th><th>CADERA</th></tr></thead><tbody>${measurements.map((row)=>`<tr><td>${escapeHtml(dateLabel(row.measured_on))}</td><td>${row.weight_kg??'—'} kg</td><td>${bmi(row)}</td><td>${row.body_fat_pct??'—'} %</td><td>${row.muscle_mass_kg??'—'} kg</td><td>${row.visceral_fat_index??'—'}</td><td>${row.waist_cm??'—'} cm</td><td>${row.hip_cm??'—'} cm</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay mediciones registradas.</p>'}</section>
-      <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Dietas e indicaciones</h3><span>${diets.length} ACTUALIZACIONES</span></div>${diets.length ? diets.map((item)=>`<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(dateLabel(item.published_at||item.created_at))} · ${item.is_published?'PUBLICADA':'BORRADOR'}</span></div><div class="live-plan-text">${escapeHtml(item.diet_content)}</div>${item.recommendations?`<p class="panel-note">${escapeHtml(item.recommendations)}</p>`:''}</article>`).join('') : '<p class="panel-note">Todavía no hay dietas registradas.</p>'}</section>
+      <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Dietas e indicaciones</h3><span>${diets.length} ACTUALIZACIONES</span></div>${dietsWithPdf.length ? dietsWithPdf.map((item)=>`<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(dateLabel(item.published_at||item.created_at))} · ${item.is_published?'PUBLICADA':'BORRADOR'}</span></div>${item.diet_pdf_path?`<p><a class="button button-outline" href="${escapeHtml(item.pdf_url)}" target="_blank" rel="noopener">Abrir PDF adjunto ↗</a> <small>${escapeHtml(item.diet_pdf_name||'Documento PDF')}</small></p>`:''}<div class="live-plan-text">${escapeHtml(item.diet_content)}</div>${item.recommendations?`<p class="panel-note">${escapeHtml(item.recommendations)}</p>`:''}</article>`).join('') : '<p class="panel-note">Todavía no hay dietas registradas.</p>'}</section>
       <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Entrenamiento</h3><span>${training.length} PLANES</span></div>${training.length ? training.map((item)=>`<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(dateLabel(item.published_at||item.created_at))} · ${item.is_published?'PUBLICADO':'BORRADOR'}</span></div><div class="live-plan-text">${escapeHtml(item.plan_content)}</div></article>`).join('') : '<p class="panel-note">No hay planes de entrenamiento registrados.</p>'}</section>
       <section class="dash-panel"><div class="dash-panel-head"><h3>Consultas</h3><span>HISTORIAL</span></div>${appointments.length ? appointments.map((item)=>`<div class="hist-row"><span><b>${escapeHtml(dateTimeLabel(item.scheduled_at))}</b><br><small>${item.appointment_type==='online'?'En línea':'Presencial'} · ${escapeHtml(item.status)}</small></span><small>${escapeHtml(item.location_or_link||'Lugar por confirmar')}</small></div>`).join('') : '<p class="panel-note">No hay consultas registradas.</p>'}</section>
       <section class="dash-panel"><div class="dash-panel-head"><h3>Avisos enviados</h3><span>${notices.length}</span></div>${notices.length ? notices.map((item)=>`<article class="notice-row"><span class="notice-dot"></span><div><small>${escapeHtml(dateTimeLabel(item.created_at))} · ${escapeHtml(item.category)}</small><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p></div></article>`).join('') : '<p class="panel-note">No hay avisos registrados.</p>'}</section>
@@ -246,7 +262,8 @@
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Publicar dieta</h3><span>ACTUALIZACIÓN PARA PACIENTE</span></div>
         <form class="live-admin-form" id="admin-diet-form"><label class="form-label" for="diet-patient">Paciente</label><select class="select" id="diet-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
           <label class="form-label" for="diet-title">Título</label><input class="input" id="diet-title" name="title" maxlength="180" required placeholder="Ej. Plan de alimentación · noviembre" />
-          <label class="form-label" for="diet-content">Dieta e indicaciones</label><textarea class="input live-textarea" id="diet-content" name="diet_content" required></textarea>
+          <label class="form-label" for="diet-pdf">Archivo PDF de la dieta</label><input class="input" id="diet-pdf" name="diet_pdf" type="file" accept="application/pdf,.pdf" required /><small class="photo-upload-hint">PDF · máximo 10 MB · solo será visible para este paciente y ENT.</small>
+          <label class="form-label" for="diet-content">Resumen e indicaciones (opcional)</label><textarea class="input live-textarea" id="diet-content" name="diet_content" placeholder="Puedes añadir aquí indicaciones breves que acompañen al PDF."></textarea>
           <label class="form-label" for="diet-recommendations">Recomendaciones adicionales</label><textarea class="input live-textarea" id="diet-recommendations" name="recommendations"></textarea>
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar actualización</button>
         </form>
@@ -536,6 +553,8 @@
       const numericOrNull = (value) => value === '' || value === undefined ? null : Number(value);
       let table;
       let record;
+      let uploadedDietPdfPath = null;
+      let dietRecordSaved = false;
       if (form.id === 'admin-config-form') {
         const datetimeOrNull = (value) => value ? new Date(value).toISOString() : null;
         record = {
@@ -578,7 +597,7 @@
         record = {
           patient_id: values.patient_id,
           title: values.title.trim(),
-          diet_content: values.diet_content.trim(),
+          diet_content: values.diet_content.trim() || 'Consulta el PDF adjunto de tu dieta.',
           recommendations: values.recommendations.trim() || null,
           is_published: true,
           published_at: new Date().toISOString(),
@@ -605,20 +624,35 @@
         };
       }
       try {
+        if (form.id === 'admin-diet-form') {
+          const file = values.diet_pdf;
+          if (!(file instanceof File) || !file.size) throw new Error('Adjunta el PDF de la dieta antes de publicar.');
+          if (file.type !== 'application/pdf' || file.size > 10 * 1024 * 1024) throw new Error('El archivo debe ser PDF y pesar máximo 10 MB.');
+          if (await file.slice(0, 5).text() !== '%PDF-') throw new Error('El archivo seleccionado no parece ser un PDF válido.');
+          uploadedDietPdfPath = `${values.patient_id}/${crypto.randomUUID()}.pdf`;
+          const { error: uploadError } = await client.storage.from('nutrition-files').upload(uploadedDietPdfPath, file, { cacheControl: '3600', contentType: 'application/pdf', upsert: false });
+          if (uploadError) throw uploadError;
+          record.diet_pdf_path = uploadedDietPdfPath;
+          record.diet_pdf_name = file.name.slice(0, 200);
+        }
         const selectedPatient = form.querySelector('select[name="patient_id"]')?.selectedOptions?.[0];
         const patientPhone = (selectedPatient?.dataset.phone || '').replace(/\D/g, '');
         const patientName = selectedPatient?.textContent.split(' · ')[0] || 'paciente';
         const { error } = await client.from(table).insert(record);
         if (error) throw error;
+        if (form.id === 'admin-diet-form') dietRecordSaved = true;
         await renderAdmin();
         if (patientPhone) {
           const waMessage = encodeURIComponent(`Hola ${patientName}. Hay una nueva notificación en tu perfil ENT. Ingresa a https://ent2026.github.io/ent-nutricion-portal/ para consultar tu actualización.`);
           content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal whatsapp-ready"><b>Actualización publicada para ${escapeHtml(patientName)}</b><span>La notificación ya está en su perfil.</span><a class="button button-outline" href="https://wa.me/${patientPhone}?text=${waMessage}" target="_blank" rel="noopener">Abrir WhatsApp con aviso preparado</a><small>El mensaje se abrirá para que ENT lo revise y toque Enviar. No incluye información nutricional.</small></section>`);
         }
       } catch (error) {
+        if (uploadedDietPdfPath && !dietRecordSaved) {
+          await client.storage.from('nutrition-files').remove([uploadedDietPdfPath]).catch(() => {});
+        }
         const notice = content.querySelector('.live-notice');
         if (notice) notice.remove();
-        content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<p class="login-error live-notice" role="alert">No se pudo guardar. Revisa los campos y vuelve a intentarlo.</p>`);
+        content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<p class="login-error live-notice" role="alert">${escapeHtml(error.message || 'No se pudo guardar. Revisa los campos y vuelve a intentarlo.')}</p>`);
         submit.disabled = false;
         submit.textContent = 'Intentar de nuevo';
       }
