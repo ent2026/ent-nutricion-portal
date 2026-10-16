@@ -2,7 +2,7 @@ const modal = document.querySelector('#modal');
 const modalContent = document.querySelector('#modal-content');
 const toast = document.querySelector('#toast');
 let toastTimer;
-let consultationObjective = '';
+
 const consultationServices = {
   initial: { label: 'Consulta inicial', detail: 'Primera valoración y programa personalizado.', months: 1, price: 'consult_initial_price' },
   followup: { label: 'Consulta de seguimiento', detail: 'Consulta subsecuente para revisar y ajustar el proceso.', months: 1, price: 'consult_followup_price' },
@@ -120,9 +120,9 @@ function adminEditor() {
 
 document.addEventListener('click',(event)=>{
   const consultation=event.target.closest('[data-consult-package]');
-  if(consultation){startEnrollment(consultation.dataset.consultPackage,consultationObjective);consultationObjective='';return;}
+  if(consultation){startEnrollment(consultation.dataset.consultPackage,'');return;}
   const viewButton=event.target.closest('[data-view]');
-  if(viewButton){const view=viewButton.dataset.view;document.querySelector('#mobile-panel').classList.remove('open');document.querySelector('.mobile-menu').setAttribute('aria-expanded','false');document.querySelector('.mobile-menu').setAttribute('aria-label','Abrir menú');document.querySelector('.mobile-menu').textContent='☰';if(view==='patient')patientDashboard();else if(view==='admin')adminDashboard();else if(view==='competition')startEnrollment('initial','Preparación para competir');return;}
+  if(viewButton){const view=viewButton.dataset.view;document.querySelector('#mobile-panel').classList.remove('open');document.querySelector('.mobile-menu').setAttribute('aria-expanded','false');document.querySelector('.mobile-menu').setAttribute('aria-label','Abrir menú');document.querySelector('.mobile-menu').textContent='☰';if(view==='patient')patientDashboard();else if(view==='admin')adminDashboard();else if(view==='choose')document.querySelector('#consultas')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const tab=event.target.closest('[data-dash]');if(tab){modal.querySelectorAll('[data-dash]').forEach(b=>b.classList.toggle('active',b===tab));document.querySelector('#dash-content').innerHTML=dashboardContent(tab.dataset.dash);return;}
   const admin=event.target.closest('[data-admin-action]');if(admin){const action=admin.dataset.adminAction;if(action==='edit')adminEditor();if(action==='new')adminCreatePatient();if(action==='review')reviewApplication();if(action==='whatsapp')showToast('Demostración: no se abrió WhatsApp ni se envió un mensaje.');if(action==='publish')showToast('Demostración: no se guardó ni se envió ninguna actualización.');return;}
   if(event.target.closest('.modal-close'))closeModal();
