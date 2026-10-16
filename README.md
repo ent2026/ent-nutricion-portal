@@ -1,22 +1,29 @@
 # ENT · Portal de nutrición y rendimiento
 
-Prototipo responsivo para revisar la experiencia del sitio de Esteban Téllez, nutriólogo. Está construido como HTML, CSS y JavaScript sin dependencias ni servicios externos.
+Portal web responsivo para Esteban Téllez. La interfaz está hecha con HTML, CSS y JavaScript. La autenticación y los expedientes usan Supabase en una organización Free. La vista pública de demostración se publicará con GitHub Pages.
 
-## Vista previa
+## Estado del proyecto
 
-- Abre `index.html` para recorrer el sitio con sus archivos separados.
-- Abre `ent-vista-previa-operativa.html` para usar la demostración en un solo archivo.
+- La página de inicio y los planes Light, Weight y Best están listos para revisión.
+- Los accesos de paciente y administrador ya usan Supabase Auth.
+- El perfil del paciente consulta su perfil, mediciones, dieta, entrenamiento y citas, sujeto a las políticas RLS de Supabase.
+- El administrador consulta solicitudes, expedientes y citas, sujeto al rol admin en app_metadata.
+- El esquema de datos está documentado en [supabase/schema.sql](supabase/schema.sql).
+- Las tablas no contienen expedientes ni datos de pacientes.
 
-## Secciones incluidas
+## Pendiente de habilitar
 
-- Inicio con rutas para pacientes activos, nuevos pacientes y preparación para competir.
-- Planes Light, Weight y Best con selección de duración y método de pago.
-- Panel de paciente con dieta, mediciones e historial de ejemplo.
-- Panel administrativo con solicitudes, alta, citas y publicación simulada de una actualización.
-- Diseño adaptable a móvil y computadora.
+Aún no se han creado cuentas de administrador o pacientes. Tampoco están conectados el formulario público de solicitud, el alta/invitación de cuentas, la edición de mediciones y planes, los pagos ni las notificaciones de WhatsApp. Los precios y la dirección del consultorio también deben confirmarse.
 
-## Límites de esta demostración
+## Publicación de la vista previa
 
-Los nombres y valores son ficticios. Los precios están pendientes de definición. Formularios, citas, altas, actualizaciones y avisos de WhatsApp solo se simulan: no se guardan ni se envían. No hay autenticación, conexión a Supabase, pagos ni datos reales de pacientes.
+El repositorio debe estar público para usar GitHub Pages con GitHub Free. En **Settings → Pages**, el origen debe ser **GitHub Actions**. Después ejecuta manualmente **Actions → Publish ENT preview → Run workflow**. El archivo de flujo es .github/workflows/pages.yml.
 
-El repositorio conserva el código fuente. La vista previa no está desplegada en un sitio web público.
+La página de demostración no debe recibir información real de pacientes. El repositorio público contiene el código fuente y configuración pública del cliente Supabase; no debe incluir contraseñas, claves secretas ni expedientes.
+
+## Seguridad de Supabase
+
+- Row Level Security está activado en todas las tablas públicas.
+- Los pacientes solo pueden consultar su propio expediente; las dietas y rutinas solo son visibles tras publicarse.
+- El rol administrativo se valida desde app_metadata, que no puede modificarse desde el perfil del usuario.
+- supabase-config.js contiene el URL del proyecto y una clave publicable diseñada para el cliente web. No contiene una clave service_role.
