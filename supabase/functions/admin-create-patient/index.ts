@@ -10,6 +10,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 const cleanString = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 const normalizeUsername = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
+const serviceMonths: Record<string, number> = { initial: 1, followup: 1, bimonthly: 2, quarterly: 3, semester: 6, couple: 1 };
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -34,7 +35,7 @@ Deno.serve(async (request) => {
   let username = normalizeUsername(cleanString(input.username, 40));
   let phone = cleanString(input.phone, 40);
   let planCode = cleanString(input.plan_code, 20);
-  let planMonths = Number(input.plan_months);
+  let planMonths = serviceMonths[planCode] || 0;
   let applicationId = cleanString(input.application_id, 50);
   const password = typeof input.initial_password === 'string' ? input.initial_password : '';
 
@@ -47,10 +48,10 @@ Deno.serve(async (request) => {
     username = normalizeUsername(application.username || fullName.replace(/\s+/g, '.'));
     phone = application.phone;
     planCode = application.plan_code;
-    planMonths = application.plan_months;
+    planMonths = serviceMonths[planCode] || 0;
   }
 
-  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !['light', 'weight', 'best'].includes(planCode) || ![6, 12].includes(planMonths) || password.length < 12 || password.length > 72) {
+  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !Object.hasOwn(serviceMonths, planCode) || planMonths !== serviceMonths[planCode] || password.length < 12 || password.length > 72) {
     return json({ error: 'Revisa nombre, usuario, teléfono, membresía y contraseña (12 a 72 caracteres).' }, 400);
   }
 
@@ -63,7 +64,6 @@ Deno.serve(async (request) => {
     username = `${requestedUsername.slice(0, 40 - ending.length)}${ending}`;
   }
 
-  const password = newTemporaryPassword();
   // Supabase Auth password sign-in accepts email or phone. ENT exposes only the
   // stable username; this non-deliverable internal address is never shown to patients.
   const email = `${username}@paciente.ent.invalid`;
