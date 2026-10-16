@@ -162,3 +162,18 @@
 @media(max-width:480px){.consultation-grid{grid-template-columns:1fr}.consultation-card{min-height:auto}.consultation-card p{min-height:0}.consultation-footnote{display:grid}.admin-workspace-tab{font-size:.78rem;padding:10px 4px}}
 
 .patient-record-actions,.patient-delete-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 16px}.button-danger{background:#8d342d;border:1px solid #8d342d;color:#fff}.button-danger:hover{background:#742a25}.patient-delete-confirm{margin:0 0 20px;padding:20px;border:1px solid #d9b1ad;background:#fff7f5;border-radius:4px}.patient-delete-confirm h3{margin:0 0 8px;font:500 22px var(--serif)}.patient-delete-confirm p{font-size:12px;line-height:1.7;color:#6c5a58}.patient-delete-confirm .form-label{margin-top:12px}.patient-delete-confirm[hidden]{display:none}
+
+.bulk-patient-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #e3e7df;color:#66736a;font-size:10px}
+.bulk-patient-actions label{display:flex;align-items:center;gap:7px;font-weight:700}
+.bulk-patient-actions input[type="checkbox"],.admin-list input[type="checkbox"],.patient-select input[type="checkbox"]{width:17px;height:17px;accent-color:#416d50;cursor:pointer}
+.bulk-patient-actions [data-selection-count]{margin-right:auto;color:#7d887f}
+.bulk-patient-actions .button{padding:9px 13px;font-size:9px}
+.patient-directory-row{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:stretch;border-bottom:1px solid #edf0ea}
+.patient-directory-row[hidden]{display:none}
+.patient-select{display:flex;align-items:center;justify-content:center;margin:0}
+.patient-directory-row .patient-directory-item{width:100%;border:0;border-radius:0;background:transparent}
+.patient-directory-row .patient-directory-item:hover{background:#f4f6f1}
+.admin-success{padding:11px 13px;border-left:3px solid #588260;background:#edf4eb;color:#315a3b;font-size:11px;line-height:1.5}
+.payment-choice input[type="radio"]{accent-color:#315a49;margin:0 5px 0 0}
+.payment-choice{display:block}
+@media(max-width:650px){.bulk-patient-actions{gap:9px}.bulk-patient-actions [data-selection-count]{margin-right:0}.bulk-patient-actions .button{width:100%;text-align:center}.patient-directory-row{grid-template-columns:32px minmax(0,1fr)}}
