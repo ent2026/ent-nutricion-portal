@@ -1,5 +1,8 @@
 name: Publish ENT preview
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -22,6 +25,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Upload static preview
         uses: actions/upload-pages-artifact@v3
         with:
