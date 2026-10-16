@@ -129,3 +129,8 @@
 .patient-record-item .dash-panel-head h4{font:500 16px var(--serif);margin:0}
 .patient-record .dash-grid{grid-template-columns:1fr 1fr}
 @media(max-width:650px){.patient-record-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.patient-directory-item{gap:9px;padding:10px}.patient-directory-arrow{font-size:9px}.patient-record .dash-grid{grid-template-columns:1fr}.patient-record .dash-content-wide{grid-column:1}}
+
+.diet-pdf-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:18px 0 12px}
+.diet-pdf-actions small{color:var(--muted,#72746d);overflow-wrap:anywhere}
+.diet-pdf-viewer{display:block;width:100%;height:min(78vh,900px);min-height:460px;border:1px solid rgba(35,54,43,.14);border-radius:14px;background:#f6f5f1}
+@media(max-width:640px){.diet-pdf-viewer{height:68vh;min-height:400px}.diet-pdf-actions{align-items:flex-start;flex-direction:column}}
