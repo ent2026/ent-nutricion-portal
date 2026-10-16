@@ -4,8 +4,11 @@
   const client = config && clientFactory
     ? clientFactory(config.url, config.publishableKey, { auth: { persistSession: true, autoRefreshToken: true } })
     : null;
+  const dedicatedView = document.body.dataset.portalView || '';
   const backdrop = document.querySelector('#modal');
-  const content = document.querySelector('#modal-content');
+  const content = dedicatedView
+    ? document.querySelector('#portal-root')
+    : document.querySelector('#modal-content');
   let requestedView = 'patient';
   let activeUser = null;
   let activeProfile = null;
@@ -23,12 +26,14 @@
     : '—';
   const showModal = (html) => {
     content.innerHTML = html;
+    if (dedicatedView) return;
     backdrop.classList.add('open');
     backdrop.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     content.querySelector('input')?.focus();
   };
   const closeModal = () => {
+    if (dedicatedView) return;
     backdrop.classList.remove('open');
     backdrop.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
@@ -55,7 +60,8 @@
         <button class="button button-dark form-submit" id="ent-login-submit" type="submit">Ingresar <span>→</span></button>
       </form>
       <p class="form-note">Si aún no tienes acceso, solicita tus credenciales directamente a ENT.</p>
-      <div class="live-demo-entry"><span>¿Solo quieres revisar el diseño?</span><button class="button button-outline" type="button" data-open-demo="${admin ? 'admin' : 'patient'}">Ver vista de muestra</button><small>Usa datos ficticios y no guarda cambios.</small></div>
+      ${dedicatedView ? '' : `<div class="live-demo-entry"><span>¿Solo quieres revisar el diseño?</span><button class="button button-outline" type="button" data-open-demo="${admin ? 'admin' : 'patient'}">Ver vista de muestra</button><small>Usa datos ficticios y no guarda cambios.</small></div>`}
+      ${dedicatedView ? '<a class="portal-return" href="./index.html">← Volver al sitio ENT</a>' : ''}
     </div>`);
   };
   const metric = (label, value, unit) => `<div class="metric"><small>${label}</small><strong>${value ?? '—'} <i>${unit}</i></strong></div>`;
@@ -211,6 +217,10 @@
       event.stopImmediatePropagation();
       const view = entry.dataset.view;
       document.querySelector('#mobile-panel')?.classList.remove('open');
+      if (!dedicatedView) {
+        window.location.href = view === 'admin' ? './administracion.html' : './paciente.html';
+        return;
+      }
       showLogin(view);
       return;
     }
@@ -319,6 +329,8 @@
   }, true);
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && backdrop.classList.contains('open')) closeModal();
+    if (event.key === 'Escape' && backdrop?.classList.contains('open')) closeModal();
   });
+
+  if (dedicatedView === 'patient' || dedicatedView === 'admin') showLogin(dedicatedView);
 })();
