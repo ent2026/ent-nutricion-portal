@@ -32,10 +32,7 @@
         <div class="eyebrow"><span class="eyebrow-line"></span> NUTRICIÓN CON SEGUIMIENTO REAL</div>
         <h1>Tu proceso.<br /><span>Con dirección.</span></h1>
         <p class="hero-lede">Nutrición, evaluación y acompañamiento para construir avances que puedas entender y sostener.</p>
-        <div class="hero-actions">
-          <button class="button button-dark button-large" data-view="choose">Quiero comenzar <span aria-hidden="true">↗</span></button>
-          <button class="button button-outline button-large" data-view="patient">Ya soy paciente <span aria-hidden="true">→</span></button>
-        </div>
+        <div class="hero-actions"><a class="button button-dark button-large" href="#accesos">Elegir una opción <span aria-hidden="true">↓</span></a></div>
         <div class="hero-note"><span class="tiny-check">✓</span> Tu información y seguimiento, organizados en un solo lugar.</div>
       </div>
       <figure class="hero-visual hero-portrait-card">
@@ -49,7 +46,7 @@
       <div class="hero-bottom"><span>ENT ESTEBAN TÉLLEZ</span><span>01 / 03 — NUTRICIÓN DEPORTIVA</span></div>
     </section>
 
-    <section class="entry-band" aria-label="Elige tu acceso">
+    <section class="entry-band" id="accesos" aria-label="Elige tu acceso">
       <div class="section-wrap entry-grid">
         <div><span class="section-kicker">COMIENZA POR AQUÍ</span><h2>¿Qué necesitas hoy?</h2></div>
         <button class="entry-card" data-view="patient"><span class="entry-number">01</span><span><b>Soy paciente activo</b><small>Consultar mi plan y mis avances</small></span><span class="entry-arrow">↗</span></button>
@@ -58,26 +55,32 @@
       </div>
     </section>
 
-    <section class="method section-wrap" id="metodo">
-      <div class="method-intro"><span class="section-kicker">SEGUIMIENTO, NO ADIVINANZAS</span><h2>Entender el cambio también es parte del proceso.</h2></div>
-      <div class="method-copy"><p>Revisiones individuales, objetivos claros y ajustes basados en tu evolución. Desde tu perfil podrás consultar la actualización que prepare tu nutriólogo y comparar tus mediciones a lo largo del tiempo.</p><a class="text-link" href="#planes">Explorar los planes <span>→</span></a></div>
-      <div class="method-steps">
-        <article><span>01</span><div class="step-icon">◎</div><h3>Valoración</h3><p>Conocer tu contexto, hábitos y objetivos antes de trazar el plan.</p></article>
-        <article><span>02</span><div class="step-icon">⌁</div><h3>Plan personal</h3><p>Una estrategia de alimentación alineada con tus necesidades.</p></article>
-        <article><span>03</span><div class="step-icon">↗</div><h3>Seguimiento</h3><p>Revisar tus cambios y ajustar el camino en cada consulta.</p></article>
-        <article><span>04</span><div class="step-icon">⌂</div><h3>Tu espacio</h3><p>Consultar dietas, mediciones e historial desde tu perfil.</p></article>
+    <section class="consultation-section section-wrap" id="consultas">
+      <div class="consultation-heading"><div><span class="section-kicker">CONSULTAS PRESENCIALES · 2026</span><h2>Atención profesional,<br />con un plan que sí se adapta.</h2></div><p>Programas de nutrición según tus objetivos, gustos y estilo de vida; valoración individual y seguimiento para construir hábitos sostenibles.</p></div>
+      <div class="consultation-grid">
+        <article class="consultation-card"><span>CONSULTA INDIVIDUAL</span><h3>Inicial</h3><p>Primera valoración y programa personalizado.</p><strong data-consult-price="consult_initial_price">$900</strong><button type="button" class="button button-outline" data-consult-package="initial">Solicitar información →</button></article>
+        <article class="consultation-card"><span>CONSULTA INDIVIDUAL</span><h3>Seguimiento</h3><p>Consulta subsecuente para revisar y ajustar el proceso.</p><strong data-consult-price="consult_followup_price">$800</strong><button type="button" class="button button-outline" data-consult-package="followup">Solicitar información →</button></article>
+        <article class="consultation-card"><span>PAQUETE INDIVIDUAL</span><h3>Bimestral</h3><p>2 consultas individuales · una por mes.</p><strong data-consult-price="consult_bimonthly_price">$1,400</strong><button type="button" class="button button-outline" data-consult-package="bimonthly">Solicitar información →</button></article>
+        <article class="consultation-card"><span>PAQUETE INDIVIDUAL</span><h3>Trimestral</h3><p>3 consultas individuales · una por mes.</p><strong data-consult-price="consult_quarterly_price">$2,100</strong><button type="button" class="button button-outline" data-consult-package="quarterly">Solicitar información →</button></article>
+        <article class="consultation-card consultation-card-featured"><span>PAQUETE INDIVIDUAL</span><h3>Semestral</h3><p>6 consultas individuales · una por mes.</p><strong data-consult-price="consult_semester_price">$3,900</strong><button type="button" class="button button-dark" data-consult-package="semester">Solicitar información →</button></article>
+        <article class="consultation-card"><span>CONSULTA EN PAREJA</span><h3>Dos personas</h3><p>Una consulta individual para cada persona.</p><strong data-consult-price="consult_couple_price">$1,400</strong><button type="button" class="button button-outline" data-consult-package="couple">Solicitar información →</button></article>
       </div>
+      <p class="consultation-validity">Precios vigentes hasta <b data-consult-valid-until>1 de diciembre de 2026</b>. Consulta con ENT disponibilidad y condiciones antes de realizar tu pago.</p>
+      <div class="consultation-details">
+        <article><span class="detail-icon">✳</span><div><h3>¿Qué incluye?</h3><p>Programa de nutrición, planificación de entrenamiento personalizada, material de apoyo y comunicación por WhatsApp de lunes a sábado, de 10:00 a 18:00.</p></div></article>
+        <article><span class="detail-icon">⌁</span><div><h3>Antes y después de tu cita</h3><p>Para confirmar se solicita un anticipo del 50%. Los programas se entregan hasta en 72 horas hábiles posteriores a la asesoría. Para valoraciones de composición corporal, lleva short o boxer y top; si tienes estudios de laboratorio, puedes llevarlos.</p></div></article>
+      </div>
+      <div class="consultation-footnote"><span>Reagendamiento con al menos 24 horas de anticipación</span><span>Tolerancia de llegada: 15 minutos</span><span>Duración aproximada: 40–50 minutos</span><span>Efectivo disponible en consultorio</span></div>
     </section>
-
     <section class="plans-section" id="planes">
       <div class="section-wrap">
-        <div class="plans-heading"><div><span class="section-kicker">ACOMPAÑAMIENTO A TU MEDIDA</span><h2>Un plan que se adapta<br />a tu objetivo.</h2></div><p>Elige el tipo de acompañamiento que buscas.<br />Los detalles se revisan durante tu valoración.</p></div>
+        <div class="plans-heading"><div><span class="section-kicker">PLANES DE ACOMPAÑAMIENTO</span><h2>Seguimiento según<br />tu objetivo.</h2></div><p>Light, Weight y Best son planes de seguimiento.<br />Los precios de consulta presencial aparecen arriba y se administran por separado.</p></div>
         <div class="plans-grid">
           <article class="plan-card"><div class="plan-top"><span>01 / BIENESTAR</span><span class="plan-symbol">◌</span></div><h3>Plan Light</h3><p class="plan-summary">Lo esencial para comenzar con claridad.</p><ul><li>Consultas de seguimiento</li><li>Valoraciones nutricionales</li><li>Plan de alimentación en tu perfil</li><li>Historial de mediciones</li></ul><div class="plan-price"><strong data-plan-price="light">Precio por confirmar</strong><small>6 meses · <span data-plan-price-short="light">—</span><br>1 año · <span data-plan-price-long="light">—</span></small></div><button class="button button-outline plan-cta" data-plan="light">Elegir Light <span>→</span></button></article>
           <article class="plan-card plan-card-featured"><div class="plan-top"><span>02 / RENDIMIENTO</span><span class="plan-symbol">✳</span></div><h3>Plan Weight</h3><p class="plan-summary">Más herramientas para entrenar con estructura.</p><ul><li>Todo lo incluido en Light</li><li>Orientación en suplementación</li><li>Entrenamiento personalizado</li><li>Seguimiento de composición corporal</li></ul><div class="plan-price"><strong data-plan-price="weight">Precio por confirmar</strong><small>6 meses · <span data-plan-price-short="weight">—</span><br>1 año · <span data-plan-price-long="weight">—</span></small></div><button class="button button-dark plan-cta" data-plan="weight">Elegir Weight <span>→</span></button></article>
         </div>
         <div class="competition-callout"><div class="competition-icon">✦</div><div class="competition-copy"><span>ACOMPAÑAMIENTO DE COMPETENCIA</span><h3>¿Tu meta es subir al escenario?</h3><p>Conoce el Plan Best, diseñado para preparación enfocada a fisicoculturismo.</p><p class="best-public-price">6 meses: <b data-plan-price-short="best">Por confirmar</b> · 1 año: <b data-plan-price-long="best">Por confirmar</b></p></div><button class="button button-dark" data-view="competition">Ver Plan Best <span>↗</span></button></div>
-        <p class="plans-disclaimer">La orientación profesional se define de acuerdo con cada caso y el alcance del servicio acordado durante la consulta.</p>
+        <p class="plans-disclaimer">Los paquetes de consulta presencial y los planes de seguimiento son opciones diferentes. ENT confirma el alcance de cada servicio antes de aceptar el pago.</p>
       </div>
     </section>
     <section class="closing section-wrap"><div><span class="section-kicker">SIGUIENTE PASO</span><h2>Tu proceso empieza<br />con una conversación.</h2></div><button class="button button-dark button-large" data-view="choose">Conocer los planes <span>↗</span></button></section>
