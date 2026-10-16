@@ -14,6 +14,14 @@ const escapeHtml = (value='') => String(value).replace(/[&<>"']/g,c=>({'&':'&amp
 const money = value => value == null || value === '' ? 'Por confirmar' : new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(Number(value));
 const priceFor = (plan,months) => siteSettings?.['price_'+plan+'_'+months+'_months'];
 function refreshPublicSettings(){
+  for(const field of ['consult_initial_price','consult_followup_price','consult_bimonthly_price','consult_quarterly_price','consult_semester_price','consult_couple_price']){
+    document.querySelectorAll('[data-consult-price="'+field+'"]').forEach(el=>{el.textContent=money(siteSettings?.[field]);});
+  }
+  const validUntil=document.querySelector('[data-consult-valid-until]');
+  if(validUntil&&siteSettings?.consult_prices_valid_until){
+    const [year,month,day]=String(siteSettings.consult_prices_valid_until).slice(0,10).split('-').map(Number);
+    validUntil.textContent=new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'long',year:'numeric'}).format(new Date(year,month-1,day));
+  }
   for(const plan of ['light','weight','best']){
     const a=document.querySelector('[data-plan-price-short="'+plan+'"]'),b=document.querySelector('[data-plan-price-long="'+plan+'"]'),main=document.querySelector('[data-plan-price="'+plan+'"]');
     if(a)a.textContent=money(priceFor(plan,6));if(b)b.textContent=money(priceFor(plan,12));if(main)main.textContent='6 meses: '+money(priceFor(plan,6));
@@ -123,6 +131,17 @@ function adminEditor() {
 }
 
 document.addEventListener('click',(event)=>{
+  const consultation=event.target.closest('[data-consult-package]');
+  if(consultation){
+    const phone=(siteSettings?.admin_whatsapp||'').replace(/\D/g,'');
+    if(!phone){showToast('El WhatsApp de ENT no está configurado.');return;}
+    const packageKey=consultation.dataset.consultPackage;
+    const names={initial:'consulta individual inicial',followup:'consulta individual de seguimiento',bimonthly:'paquete bimestral de dos consultas',quarterly:'paquete trimestral de tres consultas',semester:'paquete semestral de seis consultas',couple:'consulta en pareja para dos personas'};
+    const fields={initial:'consult_initial_price',followup:'consult_followup_price',bimonthly:'consult_bimonthly_price',quarterly:'consult_quarterly_price',semester:'consult_semester_price',couple:'consult_couple_price'};
+    const message=encodeURIComponent('Hola, me interesa la '+names[packageKey]+' de ENT ('+money(siteSettings?.[fields[packageKey]])+'). ¿Me pueden compartir disponibilidad y confirmar las condiciones de pago?');
+    window.open('https://wa.me/'+phone+'?text='+message,'_blank','noopener,noreferrer');
+    return;
+  }
   const viewButton=event.target.closest('[data-view]');
   if(viewButton){const view=viewButton.dataset.view;document.querySelector('#mobile-panel').classList.remove('open');document.querySelector('.mobile-menu').setAttribute('aria-expanded','false');document.querySelector('.mobile-menu').setAttribute('aria-label','Abrir menú');document.querySelector('.mobile-menu').textContent='☰';if(view==='patient')patientDashboard();else if(view==='admin')adminDashboard();else if(view==='competition')startEnrollment('best',true);else startEnrollment('light');return;}
   const planButton=event.target.closest('[data-plan]');if(planButton){startEnrollment(planButton.dataset.plan,planButton.dataset.plan==='best');return;}
