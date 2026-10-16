@@ -117,6 +117,8 @@
     const patients = profiles.data || [];
     const requests = applications.data || [];
     const upcoming = appointments.data || [];
+    const patientOptions = patients.map((row) => `<option value="${escapeHtml(row.user_id)}">${escapeHtml(row.full_name)} · ${escapeHtml(planLabel(row.plan_code))}</option>`).join('');
+    const emptyPatientOption = patients.length ? '' : '<option value="">Primero crea una cuenta de paciente</option>';
     showModal(`<div class="dashboard">
       <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><h2 id="modal-title">Administración ENT</h2><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
       <div class="admin-summary-grid"><div><small>SOLICITUDES</small><strong>${requests.length}</strong><span>En bandeja</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
@@ -126,7 +128,35 @@
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Pacientes activos</h3><span>${patients.length} EXPEDIENTES</span></div>
         ${patients.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>PACIENTE</th><th>PLAN</th><th>ESTADO</th><th>ALTA</th></tr></thead><tbody>${patients.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${escapeHtml(row.status)}</td><td>${escapeHtml(dateLabel(row.created_at))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay expedientes.</p>'}
       </section>
-      <div class="preview-callout">El panel ya consulta Supabase. Las altas de cuentas, captura de mediciones y publicación de planes se habilitarán en la siguiente etapa.</div>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Registrar valoración</h3><span>MEDICIONES</span></div>
+        <form class="live-admin-form" id="admin-measurement-form"><label class="form-label" for="measurement-patient">Paciente</label><select class="select" id="measurement-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
+          <div class="form-grid"><div><label class="form-label" for="measurement-date">Fecha</label><input class="input" id="measurement-date" name="measured_on" type="date" required value="${new Date().toISOString().slice(0, 10)}" /></div><div><label class="form-label" for="measurement-weight">Peso (kg)</label><input class="input" id="measurement-weight" name="weight_kg" type="number" min="0" max="500" step="0.01" /></div><div><label class="form-label" for="measurement-height">Estatura (cm)</label><input class="input" id="measurement-height" name="height_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-fat">Grasa corporal (%)</label><input class="input" id="measurement-fat" name="body_fat_pct" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-muscle">Masa muscular (kg)</label><input class="input" id="measurement-muscle" name="muscle_mass_kg" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-visceral">Índice visceral</label><input class="input" id="measurement-visceral" name="visceral_fat_index" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-waist">Cintura (cm)</label><input class="input" id="measurement-waist" name="waist_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-hip">Cadera (cm)</label><input class="input" id="measurement-hip" name="hip_cm" type="number" min="0" max="300" step="0.01" /></div></div>
+          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar medición</button>
+        </form>
+      </section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Publicar dieta</h3><span>ACTUALIZACIÓN PARA PACIENTE</span></div>
+        <form class="live-admin-form" id="admin-diet-form"><label class="form-label" for="diet-patient">Paciente</label><select class="select" id="diet-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
+          <label class="form-label" for="diet-title">Título</label><input class="input" id="diet-title" name="title" maxlength="180" required placeholder="Ej. Plan de alimentación · noviembre" />
+          <label class="form-label" for="diet-content">Dieta e indicaciones</label><textarea class="input live-textarea" id="diet-content" name="diet_content" required></textarea>
+          <label class="form-label" for="diet-recommendations">Recomendaciones adicionales</label><textarea class="input live-textarea" id="diet-recommendations" name="recommendations"></textarea>
+          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar actualización</button>
+        </form>
+      </section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Publicar entrenamiento</h3><span>PLAN WEIGHT / BEST</span></div>
+        <form class="live-admin-form" id="admin-training-form"><label class="form-label" for="training-patient">Paciente</label><select class="select" id="training-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
+          <label class="form-label" for="training-title">Título</label><input class="input" id="training-title" name="title" maxlength="180" required placeholder="Ej. Rutina · bloque 1" />
+          <label class="form-label" for="training-content">Entrenamiento e indicaciones</label><textarea class="input live-textarea" id="training-content" name="plan_content" required></textarea>
+          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar entrenamiento</button>
+        </form>
+      </section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Agendar consulta</h3><span>AGENDA</span></div>
+        <form class="live-admin-form" id="admin-appointment-form"><label class="form-label" for="appointment-patient">Paciente</label><select class="select" id="appointment-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
+          <div class="form-grid"><div><label class="form-label" for="appointment-date-time">Fecha y hora</label><input class="input" id="appointment-date-time" name="scheduled_at" type="datetime-local" required /></div><div><label class="form-label" for="appointment-type">Modalidad</label><select class="select" id="appointment-type" name="appointment_type"><option value="in_person">Presencial</option><option value="online">En línea</option></select></div></div>
+          <label class="form-label" for="appointment-location">Dirección o enlace</label><input class="input" id="appointment-location" name="location_or_link" maxlength="500" />
+          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar consulta</button>
+        </form>
+      </section>
+      <div class="preview-callout">Las mediciones, dietas, entrenamientos y consultas que guardes aquí se asociarán al expediente seleccionado. Las cuentas nuevas todavía deben habilitarse por separado.</div>
     </div>`);
   };
 
@@ -190,10 +220,78 @@
   }, true);
 
   document.addEventListener('submit', async (event) => {
-    if (event.target.id !== 'ent-login-form') return;
+    const form = event.target;
+    if (form.id.startsWith('admin-') && form.id.endsWith('-form')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const submit = form.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      submit.textContent = 'Guardando…';
+      const values = Object.fromEntries(new FormData(form).entries());
+      const numericOrNull = (value) => value === '' || value === undefined ? null : Number(value);
+      let table;
+      let record;
+      if (form.id === 'admin-measurement-form') {
+        table = 'body_measurements';
+        record = {
+          patient_id: values.patient_id,
+          measured_on: values.measured_on,
+          weight_kg: numericOrNull(values.weight_kg),
+          body_fat_pct: numericOrNull(values.body_fat_pct),
+          muscle_mass_kg: numericOrNull(values.muscle_mass_kg),
+          height_cm: numericOrNull(values.height_cm),
+          visceral_fat_index: numericOrNull(values.visceral_fat_index),
+          waist_cm: numericOrNull(values.waist_cm),
+          hip_cm: numericOrNull(values.hip_cm),
+          created_by: activeUser.id
+        };
+      } else if (form.id === 'admin-diet-form') {
+        table = 'nutrition_updates';
+        record = {
+          patient_id: values.patient_id,
+          title: values.title.trim(),
+          diet_content: values.diet_content.trim(),
+          recommendations: values.recommendations.trim() || null,
+          is_published: true,
+          published_at: new Date().toISOString(),
+          created_by: activeUser.id
+        };
+      } else if (form.id === 'admin-training-form') {
+        table = 'training_plans';
+        record = {
+          patient_id: values.patient_id,
+          title: values.title.trim(),
+          plan_content: values.plan_content.trim(),
+          is_published: true,
+          published_at: new Date().toISOString(),
+          created_by: activeUser.id
+        };
+      } else {
+        table = 'appointments';
+        record = {
+          patient_id: values.patient_id,
+          scheduled_at: new Date(values.scheduled_at).toISOString(),
+          appointment_type: values.appointment_type,
+          location_or_link: values.location_or_link.trim() || null,
+          created_by: activeUser.id
+        };
+      }
+      try {
+        const { error } = await client.from(table).insert(record);
+        if (error) throw error;
+        await renderAdmin();
+      } catch (error) {
+        const notice = content.querySelector('.live-notice');
+        if (notice) notice.remove();
+        content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<p class="login-error live-notice" role="alert">No se pudo guardar. Revisa los campos y vuelve a intentarlo.</p>`);
+        submit.disabled = false;
+        submit.textContent = 'Intentar de nuevo';
+      }
+      return;
+    }
+    if (form.id !== 'ent-login-form') return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const form = event.target;
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     button.textContent = 'Verificando…';
@@ -214,3 +312,5 @@
     if (event.key === 'Escape' && backdrop.classList.contains('open')) closeModal();
   });
 })();
+.login-wrap{max-width:620px;margin:0 auto}.login-grid{grid-template-columns:1fr}.login-error{padding:11px 13px;border-left:3px solid #b74c43;background:#fbefed;color:#7f302b;font-size:12px;line-height:1.5}.live-plan-text{white-space:pre-wrap;line-height:1.7;font-size:13px;color:#394941;padding:14px 0}.avatar span{font-size:19px;font-weight:600;color:var(--green)}
+.live-admin-form{display:grid;gap:9px;margin-top:10px}.live-admin-form .form-label{margin:3px 0 0}.live-admin-form .form-grid{gap:10px}.live-admin-form .button{justify-self:start;margin-top:5px}.live-textarea{width:100%;min-height:110px;padding:12px;border:1px solid var(--line);border-radius:3px;background:var(--white);color:var(--ink);font:inherit;resize:vertical}.live-admin-form button:disabled{opacity:.5;cursor:not-allowed}
