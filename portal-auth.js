@@ -19,6 +19,7 @@
   const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[char]));
+  const normalizeUsername = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
   const planLabel = (value) => ({ light: 'Light', weight: 'Weight', best: 'Best' }[value] || 'Sin plan asignado');
   const dateLabel = (value) => value
     ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(new Date(value))
@@ -52,10 +53,10 @@
     showModal(`<div class="dashboard login-wrap">
       <div class="modal-kicker">${admin ? 'ACCESO PROFESIONAL' : 'PORTAL DE PACIENTE'}</div>
       <h2 id="modal-title">${admin ? 'Administración ENT' : 'Bienvenido de nuevo'}</h2>
-      <p class="modal-lede">Ingresa con el correo y la contraseña asociados a tu cuenta.</p>
+      <p class="modal-lede">${admin ? 'Ingresa con el correo y la contraseña de administración.' : 'Ingresa con tu usuario ENT y contraseña.'}</p>
       <form id="ent-login-form" novalidate>
         <div class="form-grid login-grid">
-          <div><label class="form-label" for="ent-login-email">Correo electrónico</label><input class="input" id="ent-login-email" name="email" type="email" autocomplete="username" required /></div>
+          ${admin ? '<div><label class="form-label" for="ent-login-email">Correo de administración</label><input class="input" id="ent-login-email" name="email" type="email" autocomplete="username" required /></div>' : '<div><label class="form-label" for="ent-login-username">Usuario</label><input class="input" id="ent-login-username" name="username" type="text" autocomplete="username" minlength="3" maxlength="40" required /></div>'}
           <div><label class="form-label" for="ent-login-password">Contraseña</label><input class="input" id="ent-login-password" name="password" type="password" autocomplete="current-password" required /></div>
         </div>
         <p class="login-error" id="ent-login-error" role="alert" hidden></p>
@@ -128,7 +129,7 @@
   const renderAdmin = async () => {
     const [profiles, applications, appointments, configuration] = await Promise.all([
       client.from('patient_profiles').select('user_id,full_name,phone,plan_code,status,created_at').order('created_at', { ascending: false }).limit(100),
-      client.from('patient_applications').select('id,full_name,email,phone,plan_code,plan_months,payment_preference,status,created_at').order('created_at', { ascending: false }).limit(100),
+      client.from('patient_applications').select('id,full_name,username,phone,plan_code,plan_months,payment_preference,status,created_at').order('created_at', { ascending: false }).limit(100),
       client.from('appointments').select('id,patient_id,scheduled_at,status,appointment_type').in('status', ['scheduled', 'confirmed']).order('scheduled_at', { ascending: true }).limit(100),
       client.from('site_configuration').select('*').eq('id', 1).single()
     ]);
@@ -143,10 +144,10 @@
     showModal(`<div class="dashboard">
       <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><h2 id="modal-title">Administración ENT</h2><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
       <div class="admin-summary-grid"><div><small>SOLICITUDES</small><strong>${requests.length}</strong><span>En bandeja</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-email">Correo electrónico</label><input class="input" id="manual-email" name="email" type="email" maxlength="320" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-plan">Plan</label><select class="select" id="manual-plan" name="plan_code"><option value="light">Light</option><option value="weight">Weight</option><option value="best">Best</option></select></div><div><label class="form-label" for="manual-months">Duración</label><select class="select" id="manual-months" name="plan_months"><option value="6">6 meses</option><option value="12">1 año</option></select></div></div><button class="button button-dark" type="submit">Crear cuenta y generar clave</button></form></section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-plan">Plan</label><select class="select" id="manual-plan" name="plan_code"><option value="light">Light</option><option value="weight">Weight</option><option value="best">Best</option></select></div><div><label class="form-label" for="manual-months">Duración</label><select class="select" id="manual-months" name="plan_months"><option value="6">6 meses</option><option value="12">1 año</option></select></div></div><p class="form-note">El usuario se sugiere con nombre y apellido. La contraseña temporal se genera de forma segura al crear la cuenta.</p><button class="button button-dark" type="submit">Crear cuenta y generar clave</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="form-grid">${priceField('Light · 6 meses','price_light_6_months')}${priceField('Light · 1 año','price_light_12_months')}${priceField('Weight · 6 meses','price_weight_6_months')}${priceField('Weight · 1 año','price_weight_12_months')}${priceField('Best · 6 meses','price_best_6_months')}${priceField('Best · 1 año','price_best_12_months')}</div><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-clabe">CLABE interbancaria</label><input class="input" id="bank-clabe" name="bank_clabe" value="${escapeHtml(settings.bank_clabe||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
-        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>PLAN</th><th>DURACIÓN</th><th>CONTACTO</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${row.plan_months} meses</td><td>${escapeHtml(row.phone)}<br>${escapeHtml(row.email)}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
+        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>USUARIO SOLICITADO</th><th>PLAN</th><th>DURACIÓN</th><th>TELÉFONO</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${row.plan_months} meses</td><td>${escapeHtml(row.phone)}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
       </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Pacientes activos</h3><span>${patients.length} EXPEDIENTES</span></div>
         ${patients.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>PACIENTE</th><th>PLAN</th><th>ESTADO</th><th>ALTA</th></tr></thead><tbody>${patients.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${escapeHtml(row.status)}</td><td>${escapeHtml(dateLabel(row.created_at))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay expedientes.</p>'}
@@ -195,7 +196,7 @@
     if (error) throw error;
     if (!data || data.error) throw new Error(data?.error || 'No fue posible crear la cuenta.');
     await renderAdmin();
-    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · comparte estos datos de forma privada</b><span>Usuario: ${escapeHtml(data.email)}</span><span>Clave temporal: <code>${escapeHtml(data.temporary_password)}</code></span><small>La contraseña temporal se muestra solo esta vez. El paciente debe cambiarla al iniciar.</small></section>`);
+    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · comparte estos datos de forma privada</b><span>Usuario: <strong>${escapeHtml(data.username)}</strong></span><span>Clave temporal: <code>${escapeHtml(data.temporary_password)}</code></span><small>La contraseña temporal se muestra solo esta vez. El paciente debe cambiarla al iniciar.</small></section>`);
   };
   const enterPortal = async (user) => {
     activeUser = user;
@@ -278,6 +279,14 @@
     }
   }, true);
 
+  document.addEventListener('input', (event) => {
+    if (event.target.id === 'manual-username') event.target.dataset.userEdited = 'true';
+    if (event.target.id === 'manual-full-name') {
+      const username = content.querySelector('#manual-username');
+      if (username && username.dataset.userEdited !== 'true') username.value = normalizeUsername(event.target.value.replace(/\s+/g, '.'));
+    }
+  });
+
   document.addEventListener('submit', async (event) => {
     const form = event.target;
     if (form.id === 'ent-first-password-form') {
@@ -294,7 +303,7 @@
       event.preventDefault();event.stopImmediatePropagation();
       const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Creando cuenta…';
       const values=Object.fromEntries(new FormData(form).entries());
-      try { await createPatientAccount({ full_name: values.full_name, email: values.email, phone: values.phone, plan_code: values.plan_code, plan_months: Number(values.plan_months) }); }
+      try { await createPatientAccount({ full_name: values.full_name, username: values.username, phone: values.phone, plan_code: values.plan_code, plan_months: Number(values.plan_months) }); }
       catch (error) { setLoginError(error.message || 'No se pudo crear la cuenta.');button.disabled=false;button.textContent='Reintentar alta'; }
       return;
     }
@@ -403,8 +412,11 @@
     button.disabled = true;
     button.textContent = 'Verificando…';
     try {
-      const email = new FormData(form).get('email');
-      const password = new FormData(form).get('password');
+      const values = new FormData(form);
+      const password = values.get('password');
+      const username = requestedView === 'admin' ? '' : normalizeUsername(values.get('username'));
+      const email = requestedView === 'admin' ? values.get('email') : `${username}@paciente.ent.invalid`;
+      if (requestedView !== 'admin' && username.length < 3) throw new Error('Usuario inválido.');
       const { data, error } = await client.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (data.user.user_metadata?.must_change_password) { pendingUser=data.user;showFirstPasswordForm();return; }
