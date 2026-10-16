@@ -71,16 +71,15 @@
   };
   const showAdminSetup = () => showModal(`<div class="dashboard login-wrap">
     <div class="modal-kicker">CONFIGURACIÓN INICIAL</div>
-    <h2 id="modal-title">Crea el acceso de administración</h2>
-    <p class="modal-lede">Este registro está reservado para el correo autorizado de ENT. Crea una contraseña nueva; no uses la de GitHub.</p>
-    <form id="ent-admin-setup-form" novalidate>
-      <div><label class="form-label" for="ent-admin-setup-email">Correo autorizado</label><input class="input" id="ent-admin-setup-email" type="email" value="${ADMIN_EMAIL}" readonly /></div>
-      <div><label class="form-label" for="ent-admin-setup-password">Contraseña nueva</label><input class="input" id="ent-admin-setup-password" name="password" type="password" autocomplete="new-password" minlength="12" required /></div>
-      <div><label class="form-label" for="ent-admin-setup-confirm">Confirma la contraseña</label><input class="input" id="ent-admin-setup-confirm" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /></div>
-      <p class="login-error" id="ent-login-error" role="alert" hidden></p>
-      <p class="form-note" id="ent-setup-note">Si Supabase solicita confirmar el correo, revisa la bandeja de entrada y después vuelve aquí para iniciar sesión.</p>
-      <button class="button button-dark form-submit" type="submit">Crear acceso seguro →</button>
-    </form>
+    <h2 id="modal-title">Termina el acceso desde Supabase</h2>
+    <p class="modal-lede">Supabase alcanzó el límite temporal de correos. Crear esta cuenta desde el panel evita enviar otro correo y permite que tú establezcas la contraseña.</p>
+    <ol class="setup-steps">
+      <li>Abre <b>Authentication → Users</b> en el proyecto ENT.</li>
+      <li>Elimina solo la cuenta sin confirmar que quedó con el correo anterior.</li>
+      <li>Selecciona <b>Add user → Create new user</b>, escribe <b>${ADMIN_EMAIL}</b>, establece tu nueva contraseña y activa <b>Auto Confirm User</b> si aparece esa opción.</li>
+    </ol>
+    <a class="button button-dark form-submit" href="https://supabase.com/dashboard/project/teqnarfiuwstxjycuchb/auth/users" target="_blank" rel="noopener">Abrir usuarios de Supabase →</a>
+    <p class="form-note">Después vuelve aquí e inicia sesión con el correo y la contraseña que acabas de crear. ENT asignará el rol de administrador al primer acceso.</p>
     <button class="button button-outline form-submit" type="button" data-admin-login>Volver al inicio de sesión</button>
   </div>`);
   const showFirstPasswordForm = () => showModal(`<div class="dashboard login-wrap"><div class="modal-kicker">ACTIVA TU ACCESO</div><h2 id="modal-title">Crea una contraseña personal</h2><p class="modal-lede">Por seguridad, reemplaza tu clave temporal antes de entrar a tu perfil.</p><form id="ent-first-password-form"><label class="form-label" for="new-patient-password">Nueva contraseña</label><input class="input" id="new-patient-password" name="password" type="password" autocomplete="new-password" minlength="12" required /><label class="form-label" for="confirm-patient-password">Confirma la contraseña</label><input class="input" id="confirm-patient-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /><p class="login-error" id="ent-login-error" role="alert" hidden></p><button class="button button-dark form-submit" type="submit">Guardar y continuar →</button></form></div>`);
@@ -397,30 +396,6 @@
 
   document.addEventListener('submit', async (event) => {
     const form = event.target;
-    if (form.id === 'ent-admin-setup-form') {
-      event.preventDefault(); event.stopImmediatePropagation();
-      const values = Object.fromEntries(new FormData(form).entries());
-      const password = String(values.password || '');
-      if (password.length < 12) { setLoginError('Usa una contraseña de al menos 12 caracteres.'); return; }
-      if (password !== String(values.confirm_password || '')) { setLoginError('Las contraseñas no coinciden.'); return; }
-      const button = form.querySelector('[type="submit"]'); button.disabled = true; button.textContent = 'Creando acceso…';
-      try {
-        const { data, error } = await client.auth.signUp({ email: ADMIN_EMAIL, password, options: { data: { full_name: 'Esteban Téllez' } } });
-        if (error) throw error;
-        if (data.session) {
-          const user = await promoteInitialAdmin();
-          await enterPortal(user);
-          return;
-        }
-        showLogin('admin');
-        const note = content.querySelector('#ent-login-note');
-        if (note) note.textContent = 'Solicitud creada. Revisa el correo de confirmación de Supabase y después inicia sesión aquí.';
-      } catch (error) {
-        setLoginError(error.message || 'No se pudo crear el acceso. Revisa la configuración de autenticación e inténtalo de nuevo.');
-        button.disabled = false; button.textContent = 'Crear acceso seguro →';
-      }
-      return;
-    }
     if (form.id === 'ent-first-password-form') {
       event.preventDefault();event.stopImmediatePropagation();
       const values=Object.fromEntries(new FormData(form).entries());
