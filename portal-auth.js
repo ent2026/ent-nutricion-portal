@@ -55,6 +55,7 @@
         <button class="button button-dark form-submit" id="ent-login-submit" type="submit">Ingresar <span>→</span></button>
       </form>
       <p class="form-note">Si aún no tienes acceso, solicita tus credenciales directamente a ENT.</p>
+      <div class="live-demo-entry"><span>¿Solo quieres revisar el diseño?</span><button class="button button-outline" type="button" data-open-demo="${admin ? 'admin' : 'patient'}">Ver vista de muestra</button><small>Usa datos ficticios y no guarda cambios.</small></div>
     </div>`);
   };
   const metric = (label, value, unit) => `<div class="metric"><small>${label}</small><strong>${value ?? '—'} <i>${unit}</i></strong></div>`;
@@ -195,6 +196,15 @@
   };
 
   document.addEventListener('click', (event) => {
+    const demo = event.target.closest('[data-open-demo]');
+    if (demo) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeModal();
+      if (demo.dataset.openDemo === 'admin') window.adminDashboard?.();
+      else window.patientDashboard?.();
+      return;
+    }
     const entry = event.target.closest('[data-view="patient"], [data-view="admin"]');
     if (entry) {
       event.preventDefault();
@@ -312,5 +322,3 @@
     if (event.key === 'Escape' && backdrop.classList.contains('open')) closeModal();
   });
 })();
-.login-wrap{max-width:620px;margin:0 auto}.login-grid{grid-template-columns:1fr}.login-error{padding:11px 13px;border-left:3px solid #b74c43;background:#fbefed;color:#7f302b;font-size:12px;line-height:1.5}.live-plan-text{white-space:pre-wrap;line-height:1.7;font-size:13px;color:#394941;padding:14px 0}.avatar span{font-size:19px;font-weight:600;color:var(--green)}
-.live-admin-form{display:grid;gap:9px;margin-top:10px}.live-admin-form .form-label{margin:3px 0 0}.live-admin-form .form-grid{gap:10px}.live-admin-form .button{justify-self:start;margin-top:5px}.live-textarea{width:100%;min-height:110px;padding:12px;border:1px solid var(--line);border-radius:3px;background:var(--white);color:var(--ink);font:inherit;resize:vertical}.live-admin-form button:disabled{opacity:.5;cursor:not-allowed}
