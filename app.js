@@ -12,7 +12,7 @@ if (publicClient) window.ENT_SUPABASE_CLIENT = publicClient;
 let siteSettings = null;
 const escapeHtml = (value='') => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = value => value == null || value === '' ? 'Por confirmar' : new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(Number(value));
-const priceFor = (plan,months) => siteSettings?.['price_'+plan+'_'+months+'_months'];
+const priceFor = (plan,months) => { const six=siteSettings?.['price_'+plan+'_6_months'],year=siteSettings?.['price_'+plan+'_12_months']; if(plan==='best'&&six!=null&&year!=null&&Number(year)<Number(six))return null; return siteSettings?.['price_'+plan+'_'+months+'_months']; };
 function refreshPublicSettings(){
   for(const field of ['consult_initial_price','consult_followup_price','consult_bimonthly_price','consult_quarterly_price','consult_semester_price','consult_couple_price']){
     document.querySelectorAll('[data-consult-price="'+field+'"]').forEach(el=>{el.textContent=money(siteSettings?.[field]);});
