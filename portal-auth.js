@@ -16,6 +16,7 @@
   let activeProfile = null;
   let pendingUser = null;
   let activeTab = 'resumen';
+  let activeAdminPanel = 'patients';
 
   const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -225,6 +226,50 @@
     </div>`);
   };
 
+  const organizeAdminWorkspace = () => {
+    const dashboard = content.querySelector('.dashboard');
+    if (!dashboard || dashboard.querySelector('.admin-workspace-tabs')) return;
+    const sections = Array.from(dashboard.querySelectorAll('.admin-section'));
+    const labels = { patients: 'Pacientes', followup: 'Seguimiento', settings: 'Sitio y precios' };
+    const tabs = document.createElement('nav');
+    tabs.className = 'admin-workspace-tabs';
+    tabs.setAttribute('aria-label', 'Secciones del administrador');
+    const panels = Object.fromEntries(Object.keys(labels).map((key) => {
+      const panel = document.createElement('div');
+      panel.className = 'admin-workspace-panel';
+      panel.dataset.adminPanel = key;
+      return [key, panel];
+    }));
+    for (const section of sections) {
+      const title = (section.querySelector('h3')?.textContent || '').toLocaleLowerCase('es');
+      const group = /precio|pago|aviso general/.test(title) ? 'settings'
+        : /foto|valoraci[oó]n|dieta|entrenamiento|consulta/.test(title) ? 'followup' : 'patients';
+      panels[group].append(section);
+    }
+    for (const [key, label] of Object.entries(labels)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'admin-workspace-tab';
+      button.dataset.adminWorkspace = key;
+      button.textContent = label;
+      tabs.append(button);
+    }
+    const summary = dashboard.querySelector('.admin-summary-grid');
+    if (summary) summary.insertAdjacentElement('afterend', tabs);
+    const preview = dashboard.querySelector('.preview-callout');
+    for (const key of Object.keys(labels)) dashboard.insertBefore(panels[key], preview || null);
+    const showPanel = (key) => {
+      activeAdminPanel = labels[key] ? key : 'patients';
+      dashboard.querySelectorAll('[data-admin-panel]').forEach((panel) => { panel.hidden = panel.dataset.adminPanel !== activeAdminPanel; });
+      dashboard.querySelectorAll('[data-admin-workspace]').forEach((button) => {
+        const selected = button.dataset.adminWorkspace === activeAdminPanel;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-current', selected ? 'page' : 'false');
+      });
+    };
+    showPanel(activeAdminPanel);
+  };
+
   const renderAdmin = async () => {
     const [profiles, applications, appointments, configuration] = await Promise.all([
       client.from('patient_profiles').select('user_id,full_name,username,phone,plan_code,plan_months,membership_started_on,membership_ends_on,status,created_at').order('created_at', { ascending: false }).limit(100),
@@ -247,7 +292,7 @@
       <div class="admin-summary-grid"><div><small>SOLICITUDES</small><strong>${requests.length}</strong><span>En bandeja</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
       ${patientDirectory}
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-plan">Plan</label><select class="select" id="manual-plan" name="plan_code"><option value="light">Light</option><option value="weight">Weight</option><option value="best">Best</option></select></div><div><label class="form-label" for="manual-months">Duración</label><select class="select" id="manual-months" name="plan_months"><option value="6">6 meses</option><option value="12">1 año</option></select></div><div><label class="form-label" for="manual-password">Contraseña de acceso</label><div class="password-entry"><input class="input" id="manual-password" name="initial_password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="manual-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="manual-password">Copiar</button></div></div></div><p class="form-note">Tú defines la contraseña (mínimo 12 caracteres). Se establece al crear la cuenta; ENT no la guarda ni podrá consultarla después.</p><button class="button button-dark" type="submit">Crear acceso de paciente</button></form></section>
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="form-grid">${priceField('Light · 6 meses','price_light_6_months')}${priceField('Light · 1 año','price_light_12_months')}${priceField('Weight · 6 meses','price_weight_6_months')}${priceField('Weight · 1 año','price_weight_12_months')}${priceField('Best · 6 meses','price_best_6_months')}${priceField('Best · 1 año','price_best_12_months')}</div><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-clabe">CLABE interbancaria</label><input class="input" id="bank-clabe" name="bank_clabe" value="${escapeHtml(settings.bank_clabe||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="dash-panel-head"><h3>Consultas presenciales · 2026</h3><span>PRECIOS PÚBLICOS EDITABLES</span></div><div class="form-grid">${priceField('Consulta inicial individual','consult_initial_price')}${priceField('Consulta seguimiento individual','consult_followup_price')}${priceField('Paquete bimestral · 2 consultas','consult_bimonthly_price')}${priceField('Paquete trimestral · 3 consultas','consult_quarterly_price')}${priceField('Paquete semestral · 6 consultas','consult_semester_price')}${priceField('Consulta en pareja · 2 personas','consult_couple_price')}</div><div><label class="form-label" for="consult-prices-until">Vigencia de precios</label><input class="input" id="consult-prices-until" name="consult_prices_valid_until" type="date" value="${settings.consult_prices_valid_until ? String(settings.consult_prices_valid_until).slice(0,10) : ''}" /></div><p class="form-note">La portada muestra estos precios y abre WhatsApp con el paquete elegido. No publiques datos de tarjetas; confirma los datos de pago directamente con cada paciente.</p><div class="dash-panel-head"><h3>Membresías Light, Weight y Best</h3><span>PRECIOS PÚBLICOS EDITABLES</span></div><div class="form-grid">${priceField('Light · 6 meses','price_light_6_months')}${priceField('Light · 1 año','price_light_12_months')}${priceField('Weight · 6 meses','price_weight_6_months')}${priceField('Weight · 1 año','price_weight_12_months')}${priceField('Best · 6 meses','price_best_6_months')}${priceField('Best · 1 año','price_best_12_months')}</div><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-clabe">CLABE interbancaria</label><input class="input" id="bank-clabe" name="bank_clabe" value="${escapeHtml(settings.bank_clabe||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
         ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>USUARIO SOLICITADO</th><th>PLAN</th><th>DURACIÓN</th><th>TELÉFONO</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${row.plan_months} meses</td><td>${escapeHtml(row.phone)}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}" data-app-name="${escapeHtml(row.full_name)}" data-app-username="${escapeHtml(row.username||'')}" data-app-phone="${escapeHtml(row.phone)}" data-app-plan="${escapeHtml(row.plan_code)}" data-app-months="${row.plan_months}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
       </section>
@@ -284,6 +329,7 @@
       </section>
       <div class="preview-callout">Las mediciones, dietas, entrenamientos y consultas que guardes aquí se asociarán al expediente seleccionado. Las cuentas nuevas todavía deben habilitarse por separado.</div>
     </div>`);
+    organizeAdminWorkspace();
     if (patients.length) {
       const photoSelect = content.querySelector('#admin-photo-patient');
       if (photoSelect) { photoSelect.value = patients[0].user_id; await renderAdminPhotoGallery(photoSelect.value); }
@@ -363,6 +409,19 @@
   };
 
   document.addEventListener('click', async (event) => {
+    const workspaceTab = event.target.closest('[data-admin-workspace]');
+    if (workspaceTab) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      activeAdminPanel = workspaceTab.dataset.adminWorkspace;
+      const dashboard = content.querySelector('.dashboard');
+      dashboard?.querySelectorAll('[data-admin-panel]').forEach((panel) => { panel.hidden = panel.dataset.adminPanel !== activeAdminPanel; });
+      dashboard?.querySelectorAll('[data-admin-workspace]').forEach((button) => {
+        const selected = button.dataset.adminWorkspace === activeAdminPanel;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-current', selected ? 'page' : 'false');
+      });
+      return;
+    }
     const adminSetup = event.target.closest('[data-admin-setup]');
     if (adminSetup) { event.preventDefault(); event.stopImmediatePropagation(); showAdminSetup(); return; }
     const adminLogin = event.target.closest('[data-admin-login]');
@@ -561,6 +620,13 @@
           price_light_6_months: numericOrNull(values.price_light_6_months), price_light_12_months: numericOrNull(values.price_light_12_months),
           price_weight_6_months: numericOrNull(values.price_weight_6_months), price_weight_12_months: numericOrNull(values.price_weight_12_months),
           price_best_6_months: numericOrNull(values.price_best_6_months), price_best_12_months: numericOrNull(values.price_best_12_months),
+          consult_initial_price: numericOrNull(values.consult_initial_price),
+          consult_followup_price: numericOrNull(values.consult_followup_price),
+          consult_bimonthly_price: numericOrNull(values.consult_bimonthly_price),
+          consult_quarterly_price: numericOrNull(values.consult_quarterly_price),
+          consult_semester_price: numericOrNull(values.consult_semester_price),
+          consult_couple_price: numericOrNull(values.consult_couple_price),
+          consult_prices_valid_until: values.consult_prices_valid_until || null,
           bank_account_holder: values.bank_account_holder.trim() || null, bank_name: values.bank_name.trim() || null,
           bank_clabe: values.bank_clabe.trim() || null, transfer_instructions: values.transfer_instructions.trim() || null,
           office_address: values.office_address.trim() || null, admin_whatsapp: values.admin_whatsapp.replace(/\D/g, '') || null,
