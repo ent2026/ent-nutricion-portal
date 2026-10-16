@@ -132,7 +132,9 @@
 
   const setLoginError = (message) => {
     const box = content.querySelector('#ent-login-error');
-    if (box) { box.textContent = message; box.hidden = false; }
+    if (box) { box.textContent = message; box.hidden = false; return; }
+    const panel = content.querySelector('#patient-live-content');
+    if (panel) panel.innerHTML = `<section class="dash-panel"><p class="login-error" role="alert">${escapeHtml(message)}</p></section>`;
   };
   const enterPortal = async (user) => {
     activeUser = user;
