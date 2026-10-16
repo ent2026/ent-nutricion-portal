@@ -193,10 +193,10 @@
     showModal(`<div class="dashboard">
       <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><div class="profile-head admin-profile"><img class="avatar-photo" src="assets/esteban-tellez.jpg" alt="Esteban Téllez" /><div><h2 id="modal-title">Esteban Téllez</h2><p>Administración ENT</p></div></div><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
       <div class="admin-summary-grid"><div><small>SOLICITUDES</small><strong>${requests.length}</strong><span>En bandeja</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-plan">Plan</label><select class="select" id="manual-plan" name="plan_code"><option value="light">Light</option><option value="weight">Weight</option><option value="best">Best</option></select></div><div><label class="form-label" for="manual-months">Duración</label><select class="select" id="manual-months" name="plan_months"><option value="6">6 meses</option><option value="12">1 año</option></select></div></div><p class="form-note">El usuario se sugiere con nombre y apellido. La contraseña temporal se genera de forma segura al crear la cuenta.</p><button class="button button-dark" type="submit">Crear cuenta y generar clave</button></form></section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-plan">Plan</label><select class="select" id="manual-plan" name="plan_code"><option value="light">Light</option><option value="weight">Weight</option><option value="best">Best</option></select></div><div><label class="form-label" for="manual-months">Duración</label><select class="select" id="manual-months" name="plan_months"><option value="6">6 meses</option><option value="12">1 año</option></select></div><div><label class="form-label" for="manual-password">Contraseña de acceso</label><div class="password-entry"><input class="input" id="manual-password" name="initial_password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="manual-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="manual-password">Copiar</button></div></div></div><p class="form-note">Tú defines la contraseña (mínimo 12 caracteres). Se establece al crear la cuenta; ENT no la guarda ni podrá consultarla después.</p><button class="button button-dark" type="submit">Crear acceso de paciente</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="form-grid">${priceField('Light · 6 meses','price_light_6_months')}${priceField('Light · 1 año','price_light_12_months')}${priceField('Weight · 6 meses','price_weight_6_months')}${priceField('Weight · 1 año','price_weight_12_months')}${priceField('Best · 6 meses','price_best_6_months')}${priceField('Best · 1 año','price_best_12_months')}</div><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-clabe">CLABE interbancaria</label><input class="input" id="bank-clabe" name="bank_clabe" value="${escapeHtml(settings.bank_clabe||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
-        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>USUARIO SOLICITADO</th><th>PLAN</th><th>DURACIÓN</th><th>TELÉFONO</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${row.plan_months} meses</td><td>${escapeHtml(row.phone)}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
+        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>USUARIO SOLICITADO</th><th>PLAN</th><th>DURACIÓN</th><th>TELÉFONO</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${row.plan_months} meses</td><td>${escapeHtml(row.phone)}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}" data-app-name="${escapeHtml(row.full_name)}" data-app-username="${escapeHtml(row.username||'')}" data-app-phone="${escapeHtml(row.phone)}" data-app-plan="${escapeHtml(row.plan_code)}" data-app-months="${row.plan_months}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
       </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Pacientes activos</h3><span>${patients.length} EXPEDIENTES</span></div>
         ${patients.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>PACIENTE</th><th>PLAN</th><th>ESTADO</th><th>ALTA</th></tr></thead><tbody>${patients.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(planLabel(row.plan_code))}</td><td>${escapeHtml(row.status)}</td><td>${escapeHtml(dateLabel(row.created_at))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay expedientes.</p>'}
@@ -245,12 +245,27 @@
     if (panel) panel.innerHTML = `<section class="dash-panel"><p class="login-error" role="alert">${escapeHtml(message)}</p></section>`;
     else content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<p class="login-error live-notice" role="alert">${escapeHtml(message)}</p>`);
   };
+  const showApplicationAccessForm = (application) => showModal(`<div class="dashboard login-wrap">
+    <div class="modal-kicker">ALTA DE PACIENTE · SOLICITUD EN LÍNEA</div><h2 id="modal-title">${escapeHtml(application.name)}</h2>
+    <p class="modal-lede">Confirma el usuario solicitado y establece la contraseña que compartirás con el paciente.</p>
+    <form id="admin-application-create-form" class="live-admin-form">
+      <input type="hidden" name="application_id" value="${escapeHtml(application.id)}" />
+      <div class="form-grid"><div><label class="form-label" for="application-username">Usuario</label><input class="input" id="application-username" value="${escapeHtml(application.username)}" readonly /></div><div><label class="form-label" for="application-phone">WhatsApp</label><input class="input" id="application-phone" value="${escapeHtml(application.phone)}" readonly /></div></div>
+      <p class="form-note">Plan ${escapeHtml(planLabel(application.plan))} · ${escapeHtml(application.months)} meses.</p>
+      <label class="form-label" for="application-password">Contraseña de acceso · mínimo 12 caracteres</label><div class="password-entry"><input class="input" id="application-password" name="initial_password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="application-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="application-password">Copiar</button></div>
+      <button class="button button-dark form-submit" type="submit">Crear cuenta y expediente →</button>
+    </form><button class="button button-outline form-submit" type="button" data-cancel-create-access>Volver al administrador</button>
+  </div>`);
   const createPatientAccount = async (payload) => {
     const { data, error } = await client.functions.invoke('admin-create-patient', { body: payload });
     if (error) throw error;
     if (!data || data.error) throw new Error(data?.error || 'No fue posible crear la cuenta.');
     await renderAdmin();
-    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · comparte estos datos de forma privada</b><span>Usuario: <strong>${escapeHtml(data.username)}</strong></span><span>Clave temporal: <code>${escapeHtml(data.temporary_password)}</code></span><small>La contraseña temporal se muestra solo esta vez. El paciente debe cambiarla al iniciar.</small></section>`);
+    const phone = String(data.phone || '').replace(/\D/g, '');
+    const whatsappPhone = phone.length === 10 ? `52${phone}` : phone;
+    const message = encodeURIComponent(`Hola ${data.full_name}. Tu acceso al portal ENT está listo. Usuario: ${data.username}. Contraseña: ${data.initial_password}. Ingresa en https://ent2026.github.io/ent-nutricion-portal/paciente.html`);
+    const whatsapp = whatsappPhone ? `<a class="button button-outline" href="https://wa.me/${whatsappPhone}?text=${message}" target="_blank" rel="noopener">Preparar WhatsApp para el paciente</a>` : '';
+    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · comparte las credenciales de forma privada</b><span>Usuario</span><div class="password-entry"><input class="input" id="created-username" value="${escapeHtml(data.username)}" readonly /><button class="button button-outline password-action" type="button" data-copy-from="created-username">Copiar</button></div><span>Contraseña</span><div class="password-entry"><input class="input" id="created-password" type="text" value="${escapeHtml(data.initial_password)}" readonly /><button class="button button-outline password-action" type="button" data-toggle-password="created-password" aria-label="Ocultar contraseña">Ocultar</button><button class="button button-outline password-action" type="button" data-copy-from="created-password">Copiar</button></div>${whatsapp}<small>La contraseña no se guarda en ENT y esta es la única pantalla donde podrás verla. El paciente puede cambiarla por decisión propia desde su cuenta.</small></section>`);
   };
   const promoteInitialAdmin = async () => {
     const { data, error } = await client.functions.invoke('ent-admin-bootstrap');
@@ -370,9 +385,26 @@
     }
     const createAccess = event.target.closest('[data-create-account]');
     if (createAccess) {
-      event.preventDefault();event.stopImmediatePropagation();createAccess.disabled=true;createAccess.textContent='Creando acceso…';
-      try { await createPatientAccount({ application_id: createAccess.dataset.createAccount }); }
-      catch (error) { createAccess.disabled=false;createAccess.textContent='Reintentar alta';setLoginError(error.message || 'No se pudo crear el acceso.'); }
+      event.preventDefault();event.stopImmediatePropagation();
+      showApplicationAccessForm({ id: createAccess.dataset.createAccount, name: createAccess.dataset.appName, username: createAccess.dataset.appUsername, phone: createAccess.dataset.appPhone, plan: createAccess.dataset.appPlan, months: createAccess.dataset.appMonths });
+      return;
+    }
+    const cancelCreateAccess = event.target.closest('[data-cancel-create-access]');
+    if (cancelCreateAccess) { event.preventDefault();event.stopImmediatePropagation();await renderAdmin();return; }
+    const togglePassword = event.target.closest('[data-toggle-password]');
+    if (togglePassword) {
+      event.preventDefault();event.stopImmediatePropagation();
+      const input = content.querySelector('#'+CSS.escape(togglePassword.dataset.togglePassword));
+      if (input) { input.type = input.type === 'password' ? 'text' : 'password'; togglePassword.textContent = input.type === 'password' ? 'Ver' : 'Ocultar'; togglePassword.setAttribute('aria-label', input.type === 'password' ? 'Mostrar contraseña' : 'Ocultar contraseña'); }
+      return;
+    }
+    const copyField = event.target.closest('[data-copy-from]');
+    if (copyField) {
+      event.preventDefault();event.stopImmediatePropagation();
+      const input = content.querySelector('#'+CSS.escape(copyField.dataset.copyFrom));
+      if (!input) return;
+      try { await navigator.clipboard.writeText(input.value); copyField.textContent='Copiado'; setTimeout(()=>{copyField.textContent='Copiar';},1400); }
+      catch { input.focus();input.select();setLoginError('No se pudo copiar automáticamente. Selecciona el texto y cópialo.'); }
       return;
     }
     if (event.target.closest('[data-live-logout]')) {
@@ -406,12 +438,15 @@
       if(error){setLoginError('No se pudo actualizar la contraseña. Intenta de nuevo.');button.disabled=false;button.textContent='Guardar y continuar →';return;}
       const user=pendingUser;pendingUser=null;await enterPortal(user);return;
     }
-    if (form.id === 'admin-create-patient-form') {
+    if (form.id === 'admin-create-patient-form' || form.id === 'admin-application-create-form') {
       event.preventDefault();event.stopImmediatePropagation();
-      const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Creando cuenta…';
+      const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Creando acceso…';
       const values=Object.fromEntries(new FormData(form).entries());
-      try { await createPatientAccount({ full_name: values.full_name, username: values.username, phone: values.phone, plan_code: values.plan_code, plan_months: Number(values.plan_months) }); }
-      catch (error) { setLoginError(error.message || 'No se pudo crear la cuenta.');button.disabled=false;button.textContent='Reintentar alta'; }
+      if (String(values.initial_password||'').length < 12 || String(values.initial_password||'').length > 72) { setLoginError('La contraseña debe tener entre 12 y 72 caracteres.');button.disabled=false;button.textContent='Crear acceso de paciente';return; }
+      try {
+        if (form.id === 'admin-application-create-form') await createPatientAccount({ application_id: values.application_id, initial_password: values.initial_password });
+        else await createPatientAccount({ full_name: values.full_name, username: values.username, phone: values.phone, plan_code: values.plan_code, plan_months: Number(values.plan_months), initial_password: values.initial_password });
+      } catch (error) { setLoginError(error.message || 'No se pudo crear la cuenta.');button.disabled=false;button.textContent='Reintentar alta'; }
       return;
     }
     if (form.id === 'admin-photo-form') {
@@ -551,7 +586,6 @@
       if (requestedView !== 'admin' && username.length < 3) throw new Error('Usuario inválido.');
       const { data, error } = await client.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      if (data.user.user_metadata?.must_change_password) { pendingUser=data.user;showFirstPasswordForm();return; }
       await enterPortal(data.user);
     } catch (error) {
       setLoginError('No se pudo iniciar sesión. Revisa tus datos e inténtalo de nuevo.');
