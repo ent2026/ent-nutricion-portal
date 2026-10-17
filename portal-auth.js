@@ -809,7 +809,7 @@
         if (form.id === 'admin-diet-form') dietRecordSaved = true;
         await renderAdmin();
         if (patientPhone) {
-          const waMessage = encodeURIComponent(`Hola ${patientName}. Hay una nueva notificación en tu perfil ENT. Ingresa a https://ent2026.github.io/ent-nutricion-portal/ para consultar tu actualización.`);
+          const appointmentNotice = form.id === 'admin-appointment-form' ? ' Tu consulta quedó agendada para ' + new Intl.DateTimeFormat('es-MX',{dateStyle:'full',timeStyle:'short'}).format(new Date(record.scheduled_at)) + ' (' + (record.appointment_type === 'online' ? 'En línea' : 'Presencial') + ') en ' + record.location_or_link + '.' : ''; const waMessage = encodeURIComponent('Hola ' + patientName + '. Hay una nueva notificación en tu perfil ENT.' + appointmentNotice + ' Ingresa en https://ent2026.github.io/ent-nutricion-portal/paciente.html para consultar tus datos.');
           content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal whatsapp-ready"><b>Actualización publicada para ${escapeHtml(patientName)}</b><span>La notificación ya está en su perfil.</span><a class="button button-outline" href="https://wa.me/${patientPhone}?text=${waMessage}" target="_blank" rel="noopener">Abrir WhatsApp con aviso preparado</a><small>El mensaje se abrirá para que ENT lo revise y toque Enviar. No incluye información nutricional.</small></section>`);
         }
       } catch (error) {
