@@ -311,8 +311,8 @@
       ${patientDirectory}
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-age">Edad</label><input class="input" id="manual-age" name="age" type="number" min="1" max="120" step="1" required /></div><div><label class="form-label" for="manual-plan">Consulta o paquete</label><select class="select" id="manual-plan" name="plan_code" required><option value="initial">Consulta inicial</option><option value="followup">Consulta de seguimiento</option><option value="bimonthly">Paquete bimestral · 2 consultas</option><option value="quarterly">Paquete trimestral · 3 consultas</option><option value="semester">Paquete semestral · 6 consultas</option><option value="couple">Consulta en pareja · 2 personas</option></select></div><div><label class="form-label" for="manual-password">Contraseña de acceso</label><div class="password-entry"><input class="input" id="manual-password" name="initial_password" type="password" minlength="5" maxlength="15" autocomplete="new-password" required /><button class="button button-outline password-action password-toggle-icon" type="button" data-toggle-password="manual-password" aria-label="Mostrar contraseña" title="Mostrar contraseña">${passwordEyeIcon(false)}</button><button class="button button-outline password-action" type="button" data-copy-from="manual-password">Copiar</button></div></div></div><p class="form-note">Tú defines la contraseña (5 a 15 caracteres). Se establece al crear la cuenta; ENT no la guarda ni podrá consultarla después.</p><button class="button button-dark" type="submit">Crear acceso de paciente</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="dash-panel-head"><h3>Consultas presenciales · 2026</h3><span>PRECIOS PÚBLICOS EDITABLES</span></div><div class="form-grid">${priceField('Consulta inicial individual','consult_initial_price')}${priceField('Consulta seguimiento individual','consult_followup_price')}${priceField('Paquete bimestral · 2 consultas','consult_bimonthly_price')}${priceField('Paquete trimestral · 3 consultas','consult_quarterly_price')}${priceField('Paquete semestral · 6 consultas','consult_semester_price')}${priceField('Consulta en pareja · 2 personas','consult_couple_price')}</div><div><label class="form-label" for="consult-prices-until">Vigencia de precios</label><input class="input" id="consult-prices-until" name="consult_prices_valid_until" type="date" value="${settings.consult_prices_valid_until ? String(settings.consult_prices_valid_until).slice(0,10) : ''}" /></div><p class="form-note">La portada muestra estos precios y guarda cada solicitud en esta bandeja. Después, el paciente puede abrir WhatsApp y confirmar el envío del mensaje.</p><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-reference-type">Tipo de dato bancario</label><select class="select" id="bank-reference-type" name="bank_reference_type"><option value="CLABE interbancaria" ${settings.bank_reference_type==='CLABE interbancaria'?'selected':''}>CLABE interbancaria</option><option value="Número de tarjeta" ${settings.bank_reference_type==='Número de tarjeta'?'selected':''}>Número de tarjeta</option></select></div><div><label class="form-label" for="bank-reference-value">CLABE o número de tarjeta</label><input class="input" id="bank-reference-value" name="bank_reference_value" value="${escapeHtml(settings.bank_reference_value||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="bank-secondary-name">Segundo banco (opcional)</label><input class="input" id="bank-secondary-name" name="bank_secondary_name" value="${escapeHtml(settings.bank_secondary_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-secondary-reference-type">Tipo de dato · segundo banco</label><select class="select" id="bank-secondary-reference-type" name="bank_secondary_reference_type"><option value="CLABE interbancaria" ${settings.bank_secondary_reference_type==='CLABE interbancaria'?'selected':''}>CLABE interbancaria</option><option value="Número de tarjeta" ${settings.bank_secondary_reference_type==='Número de tarjeta'?'selected':''}>Número de tarjeta</option></select></div><div><label class="form-label" for="bank-secondary-reference-value">CLABE o número de tarjeta · segundo banco</label><input class="input" id="bank-secondary-reference-value" name="bank_secondary_reference_value" value="${escapeHtml(settings.bank_secondary_reference_value||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
-        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>EDAD</th><th>USUARIO SOLICITADO</th><th>CONSULTA O PAQUETE</th><th>OBJETIVO</th><th>TELÉFONO</th><th>COMPROBANTE</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.age ?? '—')} años</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(serviceLabel(row.plan_code))}</td><td>${escapeHtml(row.objective||'—')}</td><td>${escapeHtml(row.phone)}</td><td>${row.payment_proof_path ? (row.payment_proof_url ? `<a class="text-link" href="${escapeHtml(row.payment_proof_url)}" target="_blank" rel="noopener">Ver comprobante</a>` : 'No disponible') : 'No adjunto'}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}" data-app-name="${escapeHtml(row.full_name)}" data-app-age="${escapeHtml(row.age ?? '')}" data-app-username="${escapeHtml(row.username||'')}" data-app-phone="${escapeHtml(row.phone)}" data-app-objective="${escapeHtml(row.objective||'')}" data-app-plan="${escapeHtml(row.plan_code)}" data-app-months="${row.plan_months}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
+      <section class="dash-panel admin-section admin-new-applications-alert${requests.some((row) => activeApplicationAlerts.has(row.id)) ? ' is-alerting' : ''}" data-admin-new-applications><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
+        ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>EDAD</th><th>USUARIO SOLICITADO</th><th>CONSULTA O PAQUETE</th><th>OBJETIVO</th><th>TELÉFONO</th><th>COMPROBANTE</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr class="${activeApplicationAlerts.has(row.id) ? 'application-alert-row' : ''}"><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.age ?? '—')} años</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(serviceLabel(row.plan_code))}</td><td>${escapeHtml(row.objective||'—')}</td><td>${escapeHtml(row.phone)}</td><td>${row.payment_proof_path ? (row.payment_proof_url ? `<a class="text-link" href="${escapeHtml(row.payment_proof_url)}" target="_blank" rel="noopener">Ver comprobante</a>` : 'No disponible') : 'No adjunto'}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}" data-app-name="${escapeHtml(row.full_name)}" data-app-age="${escapeHtml(row.age ?? '')}" data-app-username="${escapeHtml(row.username||'')}" data-app-phone="${escapeHtml(row.phone)}" data-app-objective="${escapeHtml(row.objective||'')}" data-app-plan="${escapeHtml(row.plan_code)}" data-app-months="${row.plan_months}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
       </section>
 
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Registrar valoración</h3><span>MEDICIONES</span></div>
@@ -472,7 +472,7 @@
   };
   let entRealtimeChannel=null, entRealtimeTimer=null, entAdminPollTimer=null;
   let entAdminPollBusy=false, entApplicationSignature=null, entVisibilityHandler=null;
-  let entAdminAudioContext=null, entAdminSessionStartedAt=0, entAdminSeenApplicationIds=new Set();
+  let entAdminAudioContext=null, entAdminSessionStartedAt=0, entAdminSeenApplicationIds=new Set(), activeApplicationAlerts=new Set(), entAdminAlertInterval=null;
   const unlockEntAdminAudio=()=>{
     const AudioCtor=window.AudioContext||window.webkitAudioContext;
     if(!AudioCtor)return null;
@@ -507,12 +507,37 @@
       };
       if(ctx.state==='running')play();else ctx.resume().then(play).catch(()=>{});
     }
-    if(document.visibilityState!=='visible'&&'Notification'in window&&Notification.permission==='granted'){
-      try{
-        const notice=new Notification('Nueva solicitud de paciente',{body:'Hay una solicitud nueva para revisar en el administrador ENT.',tag:'ent-solicitud-'+Date.now()});
-        setTimeout(()=>notice.close(),10000);
-      }catch(_){}
-    }
+  };
+  const showEntAdminDesktopNotification=()=>{
+    if(document.visibilityState==='visible'||!('Notification'in window)||Notification.permission!=='granted')return;
+    try{
+      const notice=new Notification('Nueva solicitud de paciente',{body:'Hay una solicitud nueva para revisar en el administrador ENT.',tag:'ent-solicitud-'+Date.now()});
+      setTimeout(()=>notice.close(),10000);
+    }catch(_){}
+  };
+  const updateEntAdminAlertAppearance=()=>{
+    const section=content.querySelector('[data-admin-new-applications]');
+    if(!section)return;
+    section.classList.toggle('is-alerting',activeApplicationAlerts.size>0);
+    content.querySelectorAll('[data-create-account]').forEach(button=>{
+      button.closest('tr')?.classList.toggle('application-alert-row',activeApplicationAlerts.has(button.dataset.createAccount));
+    });
+  };
+  const startEntAdminApplicationAlert=(applicationId)=>{
+    if(!applicationId||activeApplicationAlerts.has(applicationId))return;
+    activeApplicationAlerts.add(applicationId);
+    updateEntAdminAlertAppearance();
+    playEntAdminApplicationAlert();
+    showEntAdminDesktopNotification();
+    if(!entAdminAlertInterval)entAdminAlertInterval=setInterval(()=>{
+      if(!activeApplicationAlerts.size){clearInterval(entAdminAlertInterval);entAdminAlertInterval=null;return}
+      playEntAdminApplicationAlert();
+    },4000);
+  };
+  const acknowledgeEntAdminApplicationAlert=(applicationId)=>{
+    activeApplicationAlerts.delete(applicationId);
+    if(!activeApplicationAlerts.size&&entAdminAlertInterval){clearInterval(entAdminAlertInterval);entAdminAlertInterval=null}
+    updateEntAdminAlertAppearance();
   };
   document.addEventListener('pointerdown',()=>{
     if(requestedView==='admin'&&activeUser){unlockEntAdminAudio();requestEntAdminNotificationPermission()}
@@ -528,12 +553,12 @@
     try{
       const rows=await readEntApplicationSnapshot();
       const signature=JSON.stringify(rows.map(row=>[row.id,row.created_at,row.status]));
-      const newlyArrived=rows.filter(row=>row.status==='new'&&!entAdminSeenApplicationIds.has(row.id)&&Date.parse(row.created_at)>=entAdminSessionStartedAt);
+      const newlyArrived=rows.filter(row=>row.status==='new'&&!entAdminSeenApplicationIds.has(row.id));
       rows.forEach(row=>entAdminSeenApplicationIds.add(row.id));
       const changed=signature!==entApplicationSignature;
       entApplicationSignature=signature;
-      newlyArrived.forEach((_,index)=>playEntAdminApplicationAlert(index*.65));
-      if(force||changed){
+      newlyArrived.forEach(row=>startEntAdminApplicationAlert(row.id));
+      if(force||changed||newlyArrived.length){
         await renderAdmin();
         if(newlyArrived.length)content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success live-notice" role="status">Nueva solicitud recibida. El panel se actualizó automáticamente.</p>');
       }
@@ -568,6 +593,8 @@
     });
     if(isAdmin){
       entAdminSeenApplicationIds=new Set();
+      activeApplicationAlerts.clear();
+      if(entAdminAlertInterval){clearInterval(entAdminAlertInterval);entAdminAlertInterval=null}
       entApplicationSignature=null;
       refreshEntAdminIfChanged(true);
       entAdminPollTimer=setInterval(()=>refreshEntAdminIfChanged(false),3000);
@@ -834,6 +861,7 @@
     const createAccess = event.target.closest('[data-create-account]');
     if (createAccess) {
       event.preventDefault();event.stopImmediatePropagation();
+      acknowledgeEntAdminApplicationAlert(createAccess.dataset.createAccount);
       showApplicationAccessForm({ id: createAccess.dataset.createAccount, name: createAccess.dataset.appName, age: createAccess.dataset.appAge, username: createAccess.dataset.appUsername, phone: createAccess.dataset.appPhone, objective: createAccess.dataset.appObjective, plan: createAccess.dataset.appPlan, months: createAccess.dataset.appMonths });
       return;
     }
