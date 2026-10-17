@@ -80,10 +80,10 @@ async function startEnrollment(serviceCode='initial', objective='') {
       <div class="payment-row"><label class="payment-choice selected"><input type="radio" name="payment_preference" value="transfer" checked><strong>Transferencia bancaria</strong><span>Usa los botones para copiar cada dato y pegarlo en tu banca móvil.</span></label></div>
       <div class="bank-copy-list">${bankHtml}</div>${siteSettings?.transfer_instructions ? `<p class="field-help bank-instructions">${escapeHtml(siteSettings.transfer_instructions)}</p>` : ''}
       ${bankMissing?'<div class="preview-callout">ENT aún debe configurar los datos bancarios. Confírmalos con el consultorio antes de transferir.</div>':''}
-      <div class="proof-upload"><label class="form-label" for="request-payment-proof">Comprobante de transferencia</label><input class="input" id="request-payment-proof" name="payment_proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" required /><small class="field-help">Obligatorio · PDF o imagen · máximo 5 MB.</small></div>
+      <div class="proof-upload"><label class="form-label" for="request-payment-proof">Comprobante de transferencia</label><input class="input" id="request-payment-proof" name="payment_proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" aria-describedby="request-payment-proof-help" required /><small class="field-help" id="request-payment-proof-help" role="status">Obligatorio · PDF o imagen · máximo 5 MB. Adjunta el comprobante para habilitar el envío.</small></div>
       <div class="preview-callout">Enviar la solicitud no confirma un pago ni una cita. No incluyas información médica sensible aquí.</div>
       <label class="consent-row"><input type="checkbox" name="consent" required><span>Autorizo a ENT a usar mis datos para responder esta solicitud y coordinar la atención.</span></label>
-      <button class="button button-dark form-submit" type="submit">Enviar solicitud <span>↗</span></button><p class="form-note" id="request-feedback" role="status">Tu solicitud quedará en la bandeja del administrador.</p>
+      <button class="button button-dark form-submit" type="submit" disabled>Enviar solicitud <span>↗</span></button><p class="form-note" id="request-feedback" role="status">Tu solicitud quedará en la bandeja del administrador.</p>
     </form>`);
 
 }
@@ -144,11 +144,29 @@ document.addEventListener('click',async (event)=>{
   const mobileLink=event.target.closest('.mobile-panel a');if(mobileLink){document.querySelector('#mobile-panel').classList.remove('open');document.querySelector('.mobile-menu').setAttribute('aria-expanded','false');document.querySelector('.mobile-menu').setAttribute('aria-label','Abrir menú');document.querySelector('.mobile-menu').textContent='☰';}
 });
 modal.addEventListener('click',(event)=>{if(event.target===modal)closeModal();});
+const updateRequestSubmitState=(form)=>{
+  if(!form||form.id!=='consultation-request-form')return;
+  const input=form.querySelector('#request-payment-proof'),button=form.querySelector('[type="submit"]'),help=form.querySelector('#request-payment-proof-help');
+  const file=input?.files?.[0]||null;
+  const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
+  let issue='';
+  if(file&& !allowed.includes(file.type)) issue='Usa un comprobante en PDF, JPG, PNG o WebP.';
+  else if(file&&file.size>5*1024*1024) issue='El archivo debe pesar máximo 5 MB.';
+  input?.setCustomValidity(issue);
+  if(help) help.textContent=issue|| (file ? `Comprobante listo: ${file.name} · puedes continuar.` : 'Obligatorio · PDF o imagen · máximo 5 MB. Adjunta el comprobante para habilitar el envío.');
+  if(button)button.disabled=!file||Boolean(issue)||!form.checkValidity();
+};
+document.addEventListener('input',(event)=>{const form=event.target.closest?.('#consultation-request-form');if(form)updateRequestSubmitState(form);});
+document.addEventListener('change',(event)=>{const form=event.target.closest?.('#consultation-request-form');if(form)updateRequestSubmitState(form);});
 document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&modal.classList.contains('open'))closeModal();});
 document.addEventListener('submit',async (event)=>{
   const form=event.target;
   if(form.id==='consultation-request-form'){
     event.preventDefault();
+    updateRequestSubmitState(form);
+    if(!form.checkValidity()){form.reportValidity();return;}
+    const proof=form.querySelector('#request-payment-proof')?.files?.[0];
+    if(!proof){form.querySelector('#request-payment-proof')?.focus();return;}
     const button=form.querySelector('[type="submit"]'),feedback=form.querySelector('#request-feedback');
     button.disabled=true;button.textContent='Enviando solicitud…';
     const values=Object.fromEntries(new FormData(form).entries()),service=consultationServices[form.dataset.service];
