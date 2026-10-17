@@ -78,7 +78,7 @@ async function startEnrollment(serviceCode='initial', objective='') {
       </div>
       <label class="form-label">Método de pago</label>
       <div class="payment-row"><label class="payment-choice selected"><input type="radio" name="payment_preference" value="transfer" checked><strong>Transferencia bancaria</strong><span>Usa los botones para copiar cada dato y pegarlo en tu banca móvil.</span></label></div>
-      <div class="bank-copy-list">${bankHtml}</div>
+      <div class="bank-copy-list">${bankHtml}</div>${siteSettings?.transfer_instructions ? `<p class="field-help bank-instructions">${escapeHtml(siteSettings.transfer_instructions)}</p>` : ''}
       ${bankMissing?'<div class="preview-callout">ENT aún debe configurar los datos bancarios. Confírmalos con el consultorio antes de transferir.</div>':''}
       <div class="proof-upload"><label class="form-label" for="request-payment-proof">Comprobante de transferencia</label><input class="input" id="request-payment-proof" name="payment_proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" required /><small class="field-help">Obligatorio · PDF o imagen · máximo 5 MB.</small></div>
       <div class="preview-callout">Enviar la solicitud no confirma un pago ni una cita. No incluyas información médica sensible aquí.</div>
