@@ -582,7 +582,11 @@
     if(requestedView==='admin'){
       const ctx=unlockEntAdminAudio();
       if(activeUser)requestEntAdminNotificationPermission();
-      if(activeApplicationAlerts.size&&ctx?.state==='running')playEntAdminApplicationAlert();
+      if(activeApplicationAlerts.size&&ctx){
+        const playPending=()=>{if(activeApplicationAlerts.size&&ctx.state==='running')playEntAdminApplicationAlert()};
+        if(ctx.state==='running')playPending();
+        else ctx.resume().then(playPending).catch((error)=>console.warn('ENT alert audio is waiting for activation',error));
+      }
     }
   },{capture:true});
   document.addEventListener('visibilitychange',()=>{
