@@ -203,19 +203,6 @@ document.querySelector('.mobile-menu').addEventListener('click',(event)=>{const 
 /* Cierre accesible de los apartados legales del pie */
 const footerPolicyItems = [...document.querySelectorAll('.footer-policy')];
 footerPolicyItems.forEach((policy) => {
-  const body = policy.querySelector('.footer-policy-body');
-  const summary = policy.querySelector('summary');
-  if (!body || body.querySelector('.footer-policy-close')) return;
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'footer-policy-close';
-  closeButton.setAttribute('aria-label', 'Cerrar ' + (summary?.textContent.trim() || 'apartado'));
-  closeButton.textContent = '×';
-  closeButton.addEventListener('click', () => {
-    policy.open = false;
-    summary?.focus();
-  });
-  body.prepend(closeButton);
   policy.addEventListener('toggle', () => {
     if (policy.open) footerPolicyItems.forEach((other) => {
       if (other !== policy) other.open = false;
@@ -223,6 +210,15 @@ footerPolicyItems.forEach((policy) => {
   });
 });
 document.addEventListener('click', (event) => {
+  const closeButton = event.target.closest?.('.footer-policy-close');
+  if (closeButton) {
+    const policy = closeButton.closest('.footer-policy');
+    if (policy) {
+      policy.open = false;
+      policy.querySelector('summary')?.focus();
+    }
+    return;
+  }
   footerPolicyItems.forEach((policy) => {
     if (policy.open && !policy.contains(event.target)) policy.open = false;
   });
