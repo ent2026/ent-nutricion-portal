@@ -58,29 +58,33 @@ const closeModal = () => {
   document.body.style.overflow='';
 };
 
-function startEnrollment(serviceCode='initial', objective='') {
+async function startEnrollment(serviceCode='initial', objective='') {\n  if (!siteSettings) await loadPublicSettings();
   const service = consultationServices[serviceCode]; if (!service) return;
   const price = money(siteSettings?.[service.price]);
-  const bank = [siteSettings?.bank_account_holder,siteSettings?.bank_name,siteSettings?.bank_clabe?'CLABE '+siteSettings.bank_clabe:null].filter(Boolean).join(' · ');
+  const bankRows = [['Titular de la cuenta',siteSettings?.bank_account_holder],['Banco',siteSettings?.bank_name],['CLABE interbancaria',siteSettings?.bank_clabe]];
+  const bankHtml = bankRows.map(([label,value]) => value
+    ? `<div class="bank-copy-row"><span><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></span><button class="button button-outline bank-copy-button" type="button" data-copy-text="${escapeHtml(value)}">Copiar</button></div>`
+    : `<div class="bank-copy-row"><span><small>${escapeHtml(label)}</small><strong>Dato pendiente de configurar</strong></span></div>`).join('');
+  const bankMissing = bankRows.some(([,value]) => !value);
   openModal(`<div class="modal-kicker">SOLICITUD DE CONSULTA ENT</div><h2 id="modal-title">${escapeHtml(service.label)}</h2>
     <p class="modal-lede">${escapeHtml(service.detail)} ENT revisará tus datos y se pondrá en contacto para coordinar la cita.</p>
     <div class="selected-price">Precio vigente: ${escapeHtml(price)} MXN</div>
     <form id="consultation-request-form" data-service="${escapeHtml(serviceCode)}">
       <div class="form-grid">
         <div><label class="form-label" for="request-full-name">Nombre completo</label><input class="input" id="request-full-name" name="full_name" required minlength="2" maxlength="160" autocomplete="name" /></div>
-        <div><label class="form-label" for="request-phone">Teléfono / WhatsApp</label><input class="input" id="request-phone" name="phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" inputmode="tel" /></div>
-        <div><label class="form-label" for="request-objective">Objetivo principal</label><select class="select" id="request-objective" name="objective"><option>Mejorar hábitos y composición corporal</option><option>Rendimiento deportivo</option><option ${objective==='Preparación para competir'?'selected':''}>Preparación para competir</option><option>Otro objetivo</option></select></div>
+        <div><label class="form-label" for="request-age">Edad</label><input class="input" id="request-age" name="age" type="number" min="1" max="120" step="1" required inputmode="numeric" /></div><div><label class="form-label" for="request-phone">Teléfono / WhatsApp</label><input class="input" id="request-phone" name="phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" inputmode="tel" /></div>
+        <div><label class="form-label" for="request-objective">Objetivo principal</label><select class="select" id="request-objective" name="objective" required><option value="" disabled selected>Selecciona tu objetivo</option><option>Mejorar hábitos y composición corporal</option><option>Rendimiento deportivo</option><option ${objective==='Preparación para competir'?'selected':''}>Preparación para competir</option><option>Otro objetivo</option></select></div>
       </div>
       <label class="form-label">Método de pago</label>
-      <div class="payment-row"><label class="payment-choice selected"><input type="radio" name="payment_preference" value="transfer" checked><strong>Transferencia bancaria</strong><span>${escapeHtml(bank || 'ENT confirmará los datos bancarios al coordinar tu consulta.')}</span></label></div>
-      <div class="proof-upload"><label class="form-label" for="request-payment-proof">Comprobante de transferencia <span>(opcional)</span></label><input class="input" id="request-payment-proof" name="payment_proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" /><small class="field-help">PDF o imagen · máximo 5 MB. Si aún no pagas, puedes enviar la solicitud y compartir el comprobante después.</small></div>
+      <div class="payment-row"><label class="payment-choice selected"><input type="radio" name="payment_preference" value="transfer" checked><strong>Transferencia bancaria</strong><span>Usa los botones para copiar cada dato y pegarlo en tu banca móvil.</span></label></div>
+      <div class="bank-copy-list">${bankHtml}</div>
+      ${bankMissing?'<div class="preview-callout">ENT aún debe configurar los datos bancarios. Confírmalos con el consultorio antes de transferir.</div>':''}
+      <div class="proof-upload"><label class="form-label" for="request-payment-proof">Comprobante de transferencia</label><input class="input" id="request-payment-proof" name="payment_proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" required /><small class="field-help">Obligatorio · PDF o imagen · máximo 5 MB.</small></div>
       <div class="preview-callout">Enviar la solicitud no confirma un pago ni una cita. No incluyas información médica sensible aquí.</div>
       <label class="consent-row"><input type="checkbox" name="consent" required><span>Autorizo a ENT a usar mis datos para responder esta solicitud y coordinar la atención.</span></label>
       <button class="button button-dark form-submit" type="submit">Enviar solicitud <span>↗</span></button><p class="form-note" id="request-feedback" role="status">Tu solicitud quedará en la bandeja del administrador.</p>
     </form>`);
-  const fullName=modal.querySelector('#request-full-name'),username=modal.querySelector('#request-username');let userEdited=false;
-  username.addEventListener('input',()=>{userEdited=true;username.value=String(username.value).normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9._-]/g,'').slice(0,40);});
-  fullName.addEventListener('input',()=>{if(!userEdited)username.value=String(fullName.value).normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9._ -]/g,'').replace(/[\\s._-]+/g,'.').slice(0,40);});
+
 }
 function patientDashboard() {
   openModal(`<div class="dashboard">
@@ -117,7 +121,18 @@ function adminEditor() {
   openModal(`<div class="dashboard"><div class="modal-kicker">EXPEDIENTE · DEMOSTRACIÓN</div><h2 id="modal-title">Nueva actualización</h2><p class="modal-lede">Mariana López · Consulta de seguimiento · Los cambios solo se simulan en esta vista previa.</p><div class="admin-update"><div><label class="form-label">Peso (kg)</label><input class="input" placeholder="Ej. 64.8" /></div><div><label class="form-label">Grasa corporal (%)</label><input class="input" placeholder="Ej. 25.1" /></div><div><label class="form-label">Masa muscular (kg)</label><input class="input" placeholder="Ej. 27.4" /></div><div><label class="form-label">Próxima consulta</label><input class="input" type="date" /></div><div><label class="form-label">Dieta / indicaciones</label><textarea placeholder="Resumen de la actualización (contenido de prueba)"></textarea></div></div><div class="preview-callout">Al publicar una actualización en el sistema final, el paciente recibiría un aviso. Aquí no se guarda ni se envía nada.</div><button class="button button-dark" data-admin-action="publish">Simular actualización</button></div>`);
 }
 
-document.addEventListener('click',(event)=>{
+document.addEventListener('click',async (event)=>{
+  const copyButton=event.target.closest('[data-copy-text]');
+  if(copyButton){
+    const value=copyButton.dataset.copyText || '';
+    try { await navigator.clipboard.writeText(value); showToast('Dato copiado'); }
+    catch {
+      const field=document.createElement('textarea');field.value=value;field.style.position='fixed';field.style.opacity='0';document.body.appendChild(field);field.select();
+      const copied=document.execCommand('copy');field.remove();showToast(copied?'Dato copiado':'No se pudo copiar. Selecciona el dato y cópialo.');
+    }
+    return;
+  }
+
   const consultation=event.target.closest('[data-consult-package]');
   if(consultation){startEnrollment(consultation.dataset.consultPackage,'');return;}
   const viewButton=event.target.closest('[data-view]');
@@ -146,7 +161,7 @@ document.addEventListener('submit',async (event)=>{
       if(!data?.success)throw new Error(data?.error||'No se pudo registrar la solicitud.');
       let phone=String(siteSettings?.admin_whatsapp||'527711017152').replace(/\D/g,'');if(phone.length===10)phone='52'+phone;
       const priceText=data.price==null?'Por confirmar':money(data.price);
-      const messageLines=['Nueva solicitud ENT','Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Consulta: '+service.label,'Precio: '+priceText+' MXN','Objetivo: '+String(values.objective||'').trim(),'Pago: Transferencia bancaria',data.proof_url?'Comprobante (enlace privado, vence en 24 horas): '+data.proof_url:'Comprobante: no adjunto todavía','Revisar solicitud en el administrador ENT.'];
+      const messageLines=['Nueva solicitud ENT','Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Consulta: '+service.label,'Precio: '+priceText+' MXN','Edad: '+String(values.age||''),'Objetivo: '+String(values.objective||'').trim(),'Pago: Transferencia bancaria',data.proof_url?'Comprobante (enlace privado, vence en 24 horas): '+data.proof_url:'Comprobante: no adjunto todavía','Revisar solicitud en el administrador ENT.'];
       const whatsappUrl='https://wa.me/'+phone+'?text='+encodeURIComponent(messageLines.join('\n'));
       form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud recibida</h3><p>Gracias, '+escapeHtml(values.full_name)+'. ENT ya recibió tu solicitud'+(data.proof_url?' y guardó tu comprobante en un espacio privado.':' y revisará tus datos.')+'</p><a class="button button-dark" href="'+whatsappUrl+'" target="_blank" rel="noopener">Compartir solicitud por WhatsApp →</a><p class="form-note">'+(data.proof_url?'El mensaje incluye un enlace privado al comprobante que vence en 24 horas. ':'')+'WhatsApp abrirá el mensaje para que confirmes su envío.</p></div>';
     }catch(error){
