@@ -62,7 +62,7 @@ async function startEnrollment(serviceCode='initial', objective='') {
   if (!siteSettings) await loadPublicSettings();
   const service = consultationServices[serviceCode]; if (!service) return;
   const price = money(siteSettings?.[service.price]);
-  const bankRows = [['Titular de la cuenta',siteSettings?.bank_account_holder],['Banco',siteSettings?.bank_name],['CLABE interbancaria',siteSettings?.bank_clabe]];
+  const bankRows = [['Titular de la cuenta',siteSettings?.bank_account_holder],['Banco',siteSettings?.bank_name], [siteSettings?.bank_reference_type || 'CLABE interbancaria',siteSettings?.bank_reference_value || siteSettings?.bank_clabe], ...(siteSettings?.bank_secondary_name ? [['Segundo banco',siteSettings.bank_secondary_name],[siteSettings.bank_secondary_reference_type || 'CLABE interbancaria',siteSettings.bank_secondary_reference_value]] : [])];
   const bankHtml = bankRows.map(([label,value]) => value
     ? `<div class="bank-copy-row"><span><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></span><button class="button button-outline bank-copy-button" type="button" data-copy-text="${escapeHtml(value)}">Copiar</button></div>`
     : `<div class="bank-copy-row"><span><small>${escapeHtml(label)}</small><strong>Dato pendiente de configurar</strong></span></div>`).join('');
