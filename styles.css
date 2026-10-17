@@ -176,3 +176,28 @@
 
 .form-submit:disabled{opacity:.56;cursor:not-allowed;filter:saturate(.6)}
 .lifestyle-copy{white-space:pre-wrap;line-height:1.8}
+
+/* ENT: consultation cards reveal their price only inside the request details. */
+.consultation-card strong[data-consult-price]{display:none}
+.consult-info-cta{background:#fff!important;color:#315a49!important;border:1px solid #d7dfd4!important;transition:background .18s,color .18s,transform .18s}
+.consult-info-cta:hover,.consult-info-cta:focus-visible,.consultation-card:hover .consult-info-cta{background:#315a49!important;color:#fff!important;border-color:#315a49!important;animation:ent-jelly .42s ease}
+.consult-info-cta:active{background:#315a49!important;color:#fff!important;transform:scale(.97)}
+@keyframes ent-jelly{0%,100%{transform:scale(1,1)}25%{transform:translateX(-3px) scaleX(1.05) scaleY(.97)}50%{transform:translateX(3px) scaleX(.97) scaleY(1.03)}75%{transform:translateX(-1px) scaleX(1.02)}}
+.faq-visual-image{display:block;width:100%;height:auto;max-height:80vh;object-fit:contain;border:1px solid var(--line);border-radius:4px;background:#fff}
+.faq-admin-current{display:grid;gap:12px;margin-top:18px}
+.lifestyle-video{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
+.lifestyle-video h4{font:500 19px var(--serif);margin:0}
+.anthropometry-admin{margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:4px}
+.anthropometry-admin summary{cursor:pointer;color:#315a49;font-weight:700;font-size:12px}
+.anthropometry-admin .form-grid{margin-top:14px}
+.appointment-actions{display:flex;gap:8px;flex-wrap:wrap}
+.button-small{padding:8px 11px;font-size:10px}
+@media (hover:none){.consult-info-cta:hover{background:#fff!important;color:#315a49!important;border-color:#d7dfd4!important;animation:none}.consult-info-cta:active{background:#315a49!important;color:#fff!important}}
+@media (prefers-reduced-motion:reduce){.consult-info-cta:hover,.consult-info-cta:focus-visible{animation:none}}
+
+.faq-visual{display:block;max-width:100%;height:auto;max-height:78vh;object-fit:contain;margin:18px auto;border-radius:12px}
+.anthro-fields{border:1px solid var(--line,#d9ded5);padding:14px;border-radius:12px;margin:16px 0}
+.anthro-fields summary{cursor:pointer;font-weight:650;color:var(--ink,#26362c)}
+.anthro-fields .form-grid{margin-top:14px}
+#admin-lifestyle-list .hist-row{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line,#d9ded5)}
+#admin-lifestyle-list .hist-row a{color:var(--ink,#26362c)}
