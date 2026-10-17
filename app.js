@@ -62,19 +62,18 @@ function startEnrollment(serviceCode='initial', objective='') {
   const service = consultationServices[serviceCode]; if (!service) return;
   const price = money(siteSettings?.[service.price]);
   const bank = [siteSettings?.bank_account_holder,siteSettings?.bank_name,siteSettings?.bank_clabe?'CLABE '+siteSettings.bank_clabe:null].filter(Boolean).join(' · ');
-  const office = siteSettings?.office_address || 'La dirección se confirmará al agendar tu primera consulta.';
   openModal(`<div class="modal-kicker">SOLICITUD DE CONSULTA ENT</div><h2 id="modal-title">${escapeHtml(service.label)}</h2>
     <p class="modal-lede">${escapeHtml(service.detail)} ENT revisará tus datos y se pondrá en contacto para coordinar la cita.</p>
     <div class="selected-price">Precio vigente: ${escapeHtml(price)} MXN</div>
     <form id="consultation-request-form" data-service="${escapeHtml(serviceCode)}">
       <div class="form-grid">
-        <div><label class="form-label" for="request-full-name">Nombre completo</label><input class="input" id="request-full-name" name="full_name" required maxlength="160" autocomplete="name" /></div>
-        <div><label class="form-label" for="request-username">Usuario sugerido para el portal</label><input class="input" id="request-username" name="username" required minlength="3" maxlength="40" pattern="[a-zA-Z0-9._-]+" placeholder="nombre.apellido" autocomplete="username" /><small class="field-help">ENT confirmará tu usuario y habilitará tu perfil al aprobar la solicitud.</small></div>
-        <div><label class="form-label" for="request-phone">Teléfono / WhatsApp</label><input class="input" id="request-phone" name="phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" /></div>
+        <div><label class="form-label" for="request-full-name">Nombre completo</label><input class="input" id="request-full-name" name="full_name" required minlength="2" maxlength="160" autocomplete="name" /></div>
+        <div><label class="form-label" for="request-phone">Teléfono / WhatsApp</label><input class="input" id="request-phone" name="phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" inputmode="tel" /></div>
         <div><label class="form-label" for="request-objective">Objetivo principal</label><select class="select" id="request-objective" name="objective"><option>Mejorar hábitos y composición corporal</option><option>Rendimiento deportivo</option><option ${objective==='Preparación para competir'?'selected':''}>Preparación para competir</option><option>Otro objetivo</option></select></div>
       </div>
-      <label class="form-label">Forma de pago preferida</label>
-      <div class="payment-row"><label class="payment-choice selected"><input type="radio" name="payment_preference" value="transfer" checked><strong>Transferencia</strong><span>${escapeHtml(bank || 'ENT confirmará los datos bancarios al coordinar tu consulta.')}</span></label><label class="payment-choice"><input type="radio" name="payment_preference" value="office_cash"><strong>Efectivo en consultorio</strong><span>En la primera consulta · ${escapeHtml(office)}</span></label></div>
+      <label class="form-label">Método de pago</label>
+      <div class="payment-row"><label class="payment-choice selected"><input type="radio" name="payment_preference" value="transfer" checked disabled><strong>Transferencia bancaria</strong><span>${escapeHtml(bank || 'ENT confirmará los datos bancarios al coordinar tu consulta.')}</span></label></div>
+      <div class="proof-upload"><label class="form-label" for="request-payment-proof">Comprobante de transferencia <span>(opcional)</span></label><input class="input" id="request-payment-proof" name="payment_proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" /><small class="field-help">PDF o imagen · máximo 5 MB. Si aún no pagas, puedes enviar la solicitud y compartir el comprobante después.</small></div>
       <div class="preview-callout">Enviar la solicitud no confirma un pago ni una cita. No incluyas información médica sensible aquí.</div>
       <label class="consent-row"><input type="checkbox" name="consent" required><span>Autorizo a ENT a usar mis datos para responder esta solicitud y coordinar la atención.</span></label>
       <button class="button button-dark form-submit" type="submit">Enviar solicitud <span>↗</span></button><p class="form-note" id="request-feedback" role="status">Tu solicitud quedará en la bandeja del administrador.</p>
@@ -133,18 +132,28 @@ document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&modal.cla
 document.addEventListener('submit',async (event)=>{
   const form=event.target;
   if(form.id==='consultation-request-form'){
-    event.preventDefault();const button=form.querySelector('[type="submit"]'),feedback=form.querySelector('#request-feedback');
+    event.preventDefault();
+    const button=form.querySelector('[type="submit"]'),feedback=form.querySelector('#request-feedback');
     button.disabled=true;button.textContent='Enviando solicitud…';
     const values=Object.fromEntries(new FormData(form).entries()),service=consultationServices[form.dataset.service];
-    const username=String(values.username||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9._-]/g,'').slice(0,40);
-    const record={full_name:String(values.full_name||'').trim(),username,phone:String(values.phone||'').trim(),objective:String(values.objective||'').trim(),plan_code:form.dataset.service,plan_months:service.months,payment_preference:values.payment_preference,consent_at:new Date().toISOString(),status:'new'};
     try{
-      if(!publicClient)throw new Error('No hay conexión con el portal.');
-      const {error}=await publicClient.from('patient_applications').insert(record);if(error)throw error;
-      let phone=String(siteSettings?.admin_whatsapp||'7712901669').replace(/\\D/g,'');if(phone.length===10)phone='52'+phone;
-      const message=encodeURIComponent('Nueva solicitud ENT\\nNombre: '+record.full_name+'\\nUsuario sugerido: '+record.username+'\\nServicio: '+service.label+'\\nObjetivo: '+record.objective+'\\nTeléfono: '+record.phone+'\\nPago preferido: '+(record.payment_preference==='transfer'?'Transferencia':'Efectivo en consultorio')+'\\nRevisar en el administrador ENT.');
-      form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud recibida</h3><p>Gracias, '+escapeHtml(record.full_name)+'. ENT revisará tu solicitud y te contactará para confirmar la consulta y habilitar tu perfil.</p><a class="button button-dark" href="https://wa.me/'+phone+'?text='+message+'" target="_blank" rel="noopener">Avisar a ENT por WhatsApp →</a><p class="form-note">La solicitud ya está en el administrador. Confirma el envío en WhatsApp para avisar a ENT.</p></div>';
-    }catch(error){button.disabled=false;button.innerHTML='Reintentar envío <span>↗</span>';if(feedback)feedback.textContent=error?.code==='23505'?'Ese usuario ya está en una solicitud. Prueba una variante de nombre.apellido.':'No se pudo registrar la solicitud. Revisa tus datos e inténtalo de nuevo.';console.error('ENT request failed:',error);}
+      if(!publicClient)throw new Error('No hay conexión con el portal. Recarga la página e inténtalo de nuevo.');
+      const payload=new FormData(form);
+      payload.set('plan_code',form.dataset.service);
+      payload.set('payment_preference','transfer');
+      const {data,error}=await publicClient.functions.invoke('submit-consultation-request',{body:payload});
+      if(error)throw error;
+      if(!data?.success)throw new Error(data?.error||'No se pudo registrar la solicitud.');
+      let phone=String(siteSettings?.admin_whatsapp||'527711017152').replace(/\\D/g,'');if(phone.length===10)phone='52'+phone;
+      const priceText=data.price==null?'Por confirmar':money(data.price);
+      const messageLines=['Nueva solicitud ENT','Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Consulta: '+service.label,'Precio: '+priceText+' MXN','Objetivo: '+String(values.objective||'').trim(),'Pago: Transferencia bancaria',data.proof_url?'Comprobante (enlace privado, vence en 24 horas): '+data.proof_url:'Comprobante: no adjunto todavía','Revisar solicitud en el administrador ENT.'];
+      const whatsappUrl='https://wa.me/'+phone+'?text='+encodeURIComponent(messageLines.join('\\n'));
+      form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud recibida</h3><p>Gracias, '+escapeHtml(values.full_name)+'. ENT ya recibió tu solicitud'+(data.proof_url?' y guardó tu comprobante en un espacio privado.':' y revisará tus datos.')+'</p><a class="button button-dark" href="'+whatsappUrl+'" target="_blank" rel="noopener">Compartir solicitud por WhatsApp →</a><p class="form-note">'+(data.proof_url?'El mensaje incluye un enlace privado al comprobante que vence en 24 horas. ':'')+'WhatsApp abrirá el mensaje para que confirmes su envío.</p></div>';
+    }catch(error){
+      button.disabled=false;button.innerHTML='Reintentar envío <span>↗</span>';
+      if(feedback)feedback.textContent=error?.message||'No se pudo registrar la solicitud. Revisa tus datos e inténtalo de nuevo.';
+      console.error('ENT request failed:',error);
+    }
     return;
   }
   if(form.id==='appointment-form'){event.preventDefault();showToast('Esta demostración no agenda ni guarda consultas.');closeModal();}
