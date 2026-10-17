@@ -278,3 +278,11 @@
   .footer-policy-body p{font-size:10px}
 }
 .footer-policy-body p{padding:0;background:transparent;border-radius:0}
+
+
+/* Cierre visible y cómodo para los apartados de políticas en escritorio y móvil */
+.footer-policy-body{position:relative;padding:40px 16px 12px}
+.footer-policy-close{position:absolute;top:7px;right:8px;display:grid;place-items:center;width:29px;height:29px;padding:0;border:1px solid rgba(216,230,216,.28);border-radius:50%;background:rgba(255,255,255,.08);color:#edf2eb;font:500 21px/1 var(--sans);cursor:pointer;transition:background .16s ease,color .16s ease,transform .16s ease}
+.footer-policy-close:hover{background:rgba(201,217,170,.18);color:#fff;transform:scale(1.06)}
+.footer-policy-close:focus-visible{outline:2px solid #c9d9aa;outline-offset:3px}
+@media(max-width:600px){.footer-policy-body{padding:38px 12px 11px}.footer-policy-close{top:6px;right:7px;width:30px;height:30px}}
