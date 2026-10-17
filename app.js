@@ -186,7 +186,7 @@ const sendConsultationRequest=async(form,overlay,audioContext)=>{
   const card=overlay.querySelector('#request-confirm-card');
   const setProgress=(success=false)=>{
     card.innerHTML=`<div class="modal-kicker">${success?'SOLICITUD REGISTRADA':'ENVIANDO SOLICITUD'}</div>
-      <div class="request-progress-circle ${success?'is-complete':''}" aria-hidden="true"><span class="request-progress-fill"></span><span class="request-progress-check">✓</span></div>
+      <div class="request-progress-circle" aria-hidden="true"><span class="request-progress-fill"></span><span class="request-progress-check">✓</span></div>
       <h2 id="request-confirm-title">${success?'Solicitud enviada':'Registrando tu solicitud'}</h2>
       <p id="request-confirm-description">${success?'Tu solicitud quedó registrada. Ahora se abrirá WhatsApp para avisar a ENT.':'Estamos guardando tus datos y el comprobante de transferencia.'}</p>`;
   };
