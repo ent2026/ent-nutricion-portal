@@ -50,7 +50,7 @@ Deno.serve(async (request) => {
     if (error || !application || application.status !== 'new') return json({ error: 'La solicitud ya se procesó o no existe.' }, 409);
     hasWhatsappConsent = Boolean(application.whatsapp_consent_at);
     fullName = application.full_name;
-    username = normalizeUsername(application.username || fullName.replace(/\s+/g, '.'));
+    username = normalizeUsername(cleanString(input.username, 40) || application.username || fullName.replace(/\s+/g, '.'));
     phone = application.phone;
     age = Number(application.age);
     scheduledAt = cleanString(input.scheduled_at, 80);
