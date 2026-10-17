@@ -10,43 +10,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 const cleanString = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 const normalizeUsername = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
-const serviceMonths: Record<string, number> = { initial: 1, followup: 1, bimonthly: 2, quarterly: 3, semester: 6, couple: 1 };\ntype WhatsAppStatus = { sent: boolean; error?: string };
-const normalizeWhatsAppPhone = (value: string) => {
-  let phone = value.replace(/\D/g, '');
-  if (phone.length === 10) phone = '52' + phone;
-  if (phone.startsWith('00')) phone = phone.slice(2);
-  return phone;
-};
-async function sendWhatsAppTemplate(toValue: string, templateName: string, values: string[]): Promise<WhatsAppStatus> {
-  const token = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
-  const graphVersion = Deno.env.get('WHATSAPP_GRAPH_API_VERSION');
-  if (!token || !phoneNumberId || !graphVersion || !templateName) return { sent: false, error: 'not_configured' };
-  const to = normalizeWhatsAppPhone(toValue);
-  if (!/^\d{10,15}$/.test(to)) return { sent: false, error: 'invalid_phone' };
-  try {
-    const response = await fetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'template',
-        template: {
-          name: templateName,
-          language: { code: 'es_MX' },
-          components: [{ type: 'body', parameters: values.map((text) => ({ type: 'text', text })) }],
-        },
-      }),
-    });
-    if (!response.ok) return { sent: false, error: 'provider_error' };
-    return { sent: true };
-  } catch {
-    return { sent: false, error: 'network_error' };
-  }
-}
-
-
+const serviceMonths: Record<string, number> = { initial: 1, followup: 1, bimonthly: 2, quarterly: 3, semester: 6, couple: 1 };
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405);
@@ -75,7 +39,8 @@ Deno.serve(async (request) => {
   let locationOrLink = '';
   let planCode = cleanString(input.plan_code, 20);
   let planMonths = serviceMonths[planCode] || 0;
-  let applicationId = cleanString(input.application_id, 50);\n  let hasWhatsappConsent = false;
+  let applicationId = cleanString(input.application_id, 50);
+  let hasWhatsappConsent = false;
   const password = typeof input.initial_password === 'string' ? input.initial_password : '';
 
   if (applicationId) {
@@ -83,7 +48,8 @@ Deno.serve(async (request) => {
       .select('id,full_name,username,phone,age,plan_code,plan_months,status,whatsapp_consent_at')
       .eq('id', applicationId).maybeSingle();
     if (error || !application || application.status !== 'new') return json({ error: 'La solicitud ya se procesó o no existe.' }, 409);
-    hasWhatsappConsent = Boolean(application.whatsapp_consent_at);\n    fullName = application.full_name;
+    hasWhatsappConsent = Boolean(application.whatsapp_consent_at);
+    fullName = application.full_name;
     username = normalizeUsername(application.username || fullName.replace(/\s+/g, '.'));
     phone = application.phone;
     age = Number(application.age);
@@ -151,21 +117,10 @@ Deno.serve(async (request) => {
       return json({ error: 'No se pudo actualizar la solicitud. El alta se revirtió.' }, 500);
     }
   }
-  let whatsappStatus: WhatsAppStatus = { sent: false, error: applicationId ? (hasWhatsappConsent ? 'not_configured' : 'consent_missing') : 'no_application' };
-  if (applicationId && hasWhatsappConsent) {
-    const scheduledLabel = scheduledAt
-      ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Mexico_City' }).format(new Date(scheduledAt))
-      : 'Pendiente de agenda';
-    whatsappStatus = await sendWhatsAppTemplate(
-      phone,
-      Deno.env.get('WHATSAPP_TEMPLATE_PATIENT_ACCESS') || '',
-      [fullName, username, password, scheduledLabel, appointmentType === 'online' ? 'En línea' : 'Presencial', locationOrLink, 'https://ent2026.github.io/ent-nutricion-portal/paciente.html'],
-    );
-  }
   return json({
     username, initial_password: password, full_name: fullName, phone, age,
     scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
     appointment_type: appointmentType || null, location_or_link: locationOrLink || null,
-    whatsapp_status: whatsappStatus,
+    whatsapp_consent: hasWhatsappConsent,
   });
 });
