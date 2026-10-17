@@ -380,3 +380,16 @@
 .admin-new-applications-alert.is-alerting .application-request-card.application-alert-row .application-review-button{position:relative;z-index:1}
 @media(max-width:760px){.application-request-list{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.application-request-card{padding:12px}.application-request-head h4{font-size:16px}.application-request-details{gap:10px}.application-review-button{font-size:11px}}
+
+/* Solicita activar el sonido al entrar al administrador; vuelve al estilo original al activarlo. */
+[data-admin-audio-test].audio-needs-activation{
+  animation:entAdminAudioPrompt .9s ease-in-out infinite;
+  font-weight:700;
+}
+@keyframes entAdminAudioPrompt{
+  0%,38%{background:#ba202b;color:#fff;border-color:#941a23;box-shadow:0 0 0 3px rgba(186,32,43,.28)}
+  100%{background:transparent;color:var(--ink);border-color:#9da79f;box-shadow:none}
+}
+@media(prefers-reduced-motion:reduce){
+  [data-admin-audio-test].audio-needs-activation{animation:none;background:#ba202b;color:#fff;border-color:#941a23;box-shadow:0 0 0 3px rgba(186,32,43,.28)}
+}
