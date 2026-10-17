@@ -92,7 +92,7 @@ async function startEnrollment(serviceCode='initial', objective='') {
         <h2 id="request-confirm-title">Tu solicitud será revisada por ENT</h2>
         <p id="request-confirm-description">La clínica ENT revisará tu solicitud y confirmará tu consulta. Cuando quede aprobada, recibirás tus credenciales de acceso por WhatsApp.</p>
         <p class="request-confirm-note">Al continuar, se registrará tu solicitud. Después se abrirá WhatsApp con un mensaje preparado para avisar al consultorio; solo tendrás que tocar <strong>Enviar</strong> ahí.</p>
-        <div class="request-confirm-actions"><button class="button button-outline" type="button" id="request-confirm-back">Volver</button><button class="button button-dark" type="button" id="request-confirm-send">Continuar</button></div>
+        <div class="request-confirm-actions"><button class="button button-outline" type="button" id="request-confirm-back">Volver</button><button class="button button-dark" type="button" id="request-confirm-send">Enviar solicitud</button></div>
       </section>
     </div>`);
 
@@ -208,6 +208,7 @@ const sendConsultationRequest=async(form,overlay,audioContext)=>{
     window.setTimeout(()=>{window.location.href='https://wa.me/'+adminPhone+'?text='+encodeURIComponent(message);},1350);
   }catch(error){
     overlay.hidden=true;overlay.removeAttribute('aria-busy');
+    if(audioContext&&audioContext.state!=='closed')audioContext.close().catch(()=>{});
     button.disabled=false;button.innerHTML='Intentar de nuevo <span>↗</span>';
     if(feedback)feedback.textContent=error?.message||'No se pudo registrar la solicitud. Revisa tus datos e inténtalo de nuevo.';
     console.error('ENT request failed:',error);
