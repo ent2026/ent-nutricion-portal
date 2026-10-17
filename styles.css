@@ -277,3 +277,4 @@
   .footer-policy-body{padding:11px 12px}
   .footer-policy-body p{font-size:10px}
 }
+.footer-policy-body p{padding:0;background:transparent;border-radius:0}
