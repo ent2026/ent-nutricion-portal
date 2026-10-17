@@ -73,15 +73,6 @@
 .admin-profile .avatar-photo{width:48px;height:48px;flex-basis:48px}
 .admin-profile h2{font:500 25px var(--serif);margin:0}
 .admin-profile p{font-size:10px;color:#718078;margin:4px 0 0}
-.progress-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-top:14px}
-.progress-photo{overflow:hidden;border:1px solid #e1e5dd;border-radius:4px;background:#fafbf7}
-.progress-photo img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
-.progress-photo small{display:block;padding:8px 9px 0;color:#748077;font-size:9px}
-.progress-photo-actions{display:flex;gap:7px;padding:8px}
-.progress-photo-actions button{padding:7px 9px;font-size:9px}
-.photo-feedback{margin:10px 0 0;color:#5b735f;font-size:10px;line-height:1.5}
-.photo-feedback.error{color:#954c3d}
-.patient-photo-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
 .photo-upload-hint{font-size:10px;color:#78837b;line-height:1.6}
 @media(max-width:900px){.hero-portrait-card{width:min(100%,360px);margin-right:0}.professional-credentials{font-size:9px}}
 @media(max-width:650px){.hero-portrait-card{width:min(88vw,350px);margin:0 auto}.hero{overflow:hidden}.professional-credentials{font-size:10px;max-width:360px}.portrait-profile{bottom:-15px}.admin-profile h2{font-size:20px}}
@@ -179,3 +170,9 @@
 @media(max-width:650px){.bulk-patient-actions{gap:9px}.bulk-patient-actions [data-selection-count]{margin-right:0}.bulk-patient-actions .button{width:100%;text-align:center}.patient-directory-row{grid-template-columns:32px minmax(0,1fr)}}
 
 .bank-copy-list{display:grid;gap:8px;margin:10px 0 14px}.bank-copy-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;background:#f7f8f3;border:1px solid var(--line);border-radius:4px}.bank-copy-row>span{display:grid;gap:4px;min-width:0}.bank-copy-row small{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#718076}.bank-copy-row strong{font-size:12px;line-height:1.45;overflow-wrap:anywhere}.bank-copy-button{flex:0 0 auto;padding:8px 12px;font-size:10px}.bank-instructions{margin:0 0 14px;line-height:1.6}.nutrition-summary small{display:block;margin-top:5px;color:#68756d;font-weight:400;font-size:10px;line-height:1.6}@media(max-width:520px){.bank-copy-row{align-items:flex-start;padding:10px}.bank-copy-button{padding:8px;font-size:9px}}
+
+.diet-download-note{font-size:10px;color:#6b776f;line-height:1.6}
+.lifestyle-copy{white-space:pre-wrap;line-height:1.8}
+
+.form-submit:disabled{opacity:.56;cursor:not-allowed;filter:saturate(.6)}
+.lifestyle-copy{white-space:pre-wrap;line-height:1.8}
