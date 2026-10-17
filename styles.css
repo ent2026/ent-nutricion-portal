@@ -347,3 +347,10 @@
 @keyframes entApplicationRowFlash{0%{background-color:rgba(186,32,43,1);color:#fff}100%{background-color:rgba(186,32,43,0);color:inherit}}
 @media(max-width:650px){.new-application-alert-banner{font-size:11px;padding:12px}.new-application-alert-banner b{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.new-application-alert-banner,.admin-new-applications-alert.is-alerting .application-alert-row{animation:none;background:#f7dfe1;color:#7e1d24}}
+
+/* La tarjeta superior de solicitudes pendientes es la alerta principal del administrador. */
+.admin-summary-alert{position:relative;overflow:hidden;border:1px solid #e2e9df!important;transition:border-color .15s ease}
+.admin-summary-alert.is-alerting{background:#ba202b!important;border-color:#941a23!important;box-shadow:0 0 0 3px rgba(186,32,43,.35);animation:entNewApplicationsFlash 1.15s ease-out infinite}
+.admin-summary-alert.is-alerting small,.admin-summary-alert.is-alerting strong,.admin-summary-alert.is-alerting span{color:#fff!important}
+.admin-summary-alert.is-alerting span{font-weight:700}
+@media(prefers-reduced-motion:reduce){.admin-summary-alert.is-alerting{animation:none;background:#ba202b!important;box-shadow:0 0 0 3px #941a23}.admin-summary-alert.is-alerting small,.admin-summary-alert.is-alerting strong,.admin-summary-alert.is-alerting span{color:#fff!important}}
