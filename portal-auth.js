@@ -335,7 +335,7 @@
   };
   const showApplicationAccessForm = (application) => showModal(`<div class="dashboard login-wrap">
     <div class="modal-kicker">ALTA DE PACIENTE · SOLICITUD EN LÍNEA</div><h2 id="modal-title">${escapeHtml(application.name)}</h2>
-    <p class="modal-lede">Confirma el usuario solicitado y establece la contraseña que compartirás con el paciente.</p>
+    <p class="modal-lede">Al confirmar, se creará el acceso y se abrirá WhatsApp con la contraseña, la cita y el enlace al portal listos. Pulsa Enviar en WhatsApp para entregarlos.</p>
     <form id="admin-application-create-form" class="live-admin-form">
       <input type="hidden" name="application_id" value="${escapeHtml(application.id)}" />
       <div class="form-grid"><div><label class="form-label" for="application-username">Usuario</label><input class="input" id="application-username" value="${escapeHtml(application.username)}" readonly /></div><div><label class="form-label" for="application-phone">WhatsApp</label><input class="input" id="application-phone" value="${escapeHtml(application.phone)}" readonly /></div><div><label class="form-label" for="application-age">Edad</label><input class="input" id="application-age" value="${escapeHtml(application.age ?? '—')} años" readonly /></div></div>
@@ -345,17 +345,36 @@
     </form><button class="button button-outline form-submit" type="button" data-cancel-create-access>Volver al administrador</button>
   </div>`);
   const createPatientAccount = async (payload) => {
+    const opensWhatsApp = Boolean(payload.application_id);
+    const notificationTab = opensWhatsApp ? window.open('about:blank', '_blank') : null;
+    if (opensWhatsApp && !notificationTab) throw new Error('Permite ventanas emergentes para ENT e inténtalo de nuevo. No se creó el acceso.');
     const { data, error } = await client.functions.invoke('admin-create-patient', { body: payload });
-    if (error) throw error;
-    if (!data || data.error) throw new Error(data?.error || 'No fue posible crear la cuenta.');
+    if (error) { notificationTab?.close(); throw error; }
+    if (!data || data.error) { notificationTab?.close(); throw new Error(data?.error || 'No fue posible crear la cuenta.'); }
     await renderAdmin();
-    const notificationSent = data.whatsapp_status?.sent === true;
+    const digits = String(data.phone || '').replace(/\D/g, '');
+    const whatsappPhone = digits.length === 10 ? '52' + digits : digits;
+    const notificationSent = opensWhatsApp && data.whatsapp_consent === true && /^\d{10,15}$/.test(whatsappPhone);
+    if (notificationSent) {
+      const appointmentDate = data.scheduled_at ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Mexico_City' }).format(new Date(data.scheduled_at)) : 'Pendiente';
+      const appointmentMode = data.appointment_type === 'online' ? 'En línea' : 'Presencial';
+      const message = [
+        'Hola ' + data.full_name + ', tu acceso al portal ENT está listo.',
+        'Usuario: ' + data.username,
+        'Contraseña inicial: ' + data.initial_password,
+        'Cita: ' + appointmentDate,
+        'Modalidad: ' + appointmentMode,
+        'Lugar o enlace: ' + (data.location_or_link || 'Por confirmar'),
+        'Ingresa en https://ent2026.github.io/ent-nutricion-portal/paciente.html',
+      ].join('\n');
+      notificationTab.location.href = 'https://wa.me/' + whatsappPhone + '?text=' + encodeURIComponent(message);
+    } else notificationTab?.close();
     const notificationText = notificationSent
-      ? 'WhatsApp envió automáticamente al paciente la confirmación, la cita y sus credenciales.'
-      : data.whatsapp_status?.error === 'no_application'
-        ? 'Alta manual: no se envió WhatsApp porque no existe una solicitud con autorización registrada.'
-        : 'El expediente y la cita quedaron guardados. WhatsApp automático está pendiente de configuración; revisa la conexión de ENT antes de dar por entregadas las credenciales.';
-    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · ${notificationSent ? 'notificación enviada' : 'notificación pendiente'}</b><span>${escapeHtml(notificationText)}</span><span>Usuario</span><div class="password-entry"><input class="input" id="created-username" value="${escapeHtml(data.username)}" readonly /><button class="button button-outline password-action" type="button" data-copy-from="created-username">Copiar</button></div><span>Contraseña</span><div class="password-entry"><input class="input" id="created-password" type="text" value="${escapeHtml(data.initial_password)}" readonly /><button class="button button-outline password-action" type="button" data-toggle-password="created-password" aria-label="Ocultar contraseña">Ocultar</button><button class="button button-outline password-action" type="button" data-copy-from="created-password">Copiar</button></div><small>La contraseña se muestra una sola vez en el administrador. ${data.scheduled_at ? 'La confirmación también incluye la fecha, hora, modalidad y ubicación de la cita.' : ''}</small></section>`);
+      ? 'WhatsApp se abrió con la confirmación, la cita y las credenciales listas. Pulsa Enviar en WhatsApp para entregarlas al paciente.'
+      : opensWhatsApp
+        ? 'El acceso se creó, pero esta solicitud no tiene autorización de WhatsApp registrada.'
+        : 'Alta manual: se creó el acceso. Esta cuenta no está vinculada a una solicitud con autorización de WhatsApp.';
+    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado</b><span>${escapeHtml(notificationText)}</span><span>Usuario</span><div class="password-entry"><input class="input" id="created-username" value="${escapeHtml(data.username)}" readonly /><button class="button button-outline password-action" type="button" data-copy-from="created-username">Copiar</button></div><span>Contraseña</span><div class="password-entry"><input class="input" id="created-password" type="text" value="${escapeHtml(data.initial_password)}" readonly /><button class="button button-outline password-action" type="button" data-toggle-password="created-password" aria-label="Ocultar contraseña">Ocultar</button><button class="button button-outline password-action" type="button" data-copy-from="created-password">Copiar</button></div><small>La contraseña se muestra una sola vez en el administrador. ${data.scheduled_at ? 'La confirmación también incluye la fecha, hora, modalidad y ubicación de la cita.' : ''}</small></section>`);
   };
   const promoteInitialAdmin = async () => {
     const { data, error } = await client.functions.invoke('ent-admin-bootstrap');
