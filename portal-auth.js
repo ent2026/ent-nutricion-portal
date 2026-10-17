@@ -309,7 +309,7 @@
       </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Contenido Lifestyle</h3><span>LECTURA PERSONALIZADA</span></div>
         <form class="live-admin-form" id="admin-lifestyle-form"><label class="form-label" for="lifestyle-patient">Paciente</label><select class="select" id="lifestyle-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
-          <label class="form-label" for="lifestyle-title">Título</label><input class="input" id="lifestyle-title" name="title" maxlength="180" required placeholder="Ej. Hábitos para mejorar el descanso" />
+          <label class="form-label" for="lifestyle-title">Título</label><input class="input" id="lifestyle-title" name="title" maxlength="160" required placeholder="Ej. Hábitos para mejorar el descanso" />
           <label class="form-label" for="lifestyle-message">Información</label><textarea class="input live-textarea" id="lifestyle-message" name="message" maxlength="8000" required></textarea>
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar en Lifestyle</button>
         </form>
@@ -736,7 +736,7 @@
         record = { patient_id: values.patient_id, title: values.title.trim(), plan_content: values.plan_content.trim(), video_url: videoUrl.href, content_type: 'class', is_published: true, published_at: new Date().toISOString(), created_by: activeUser.id };
       } else if (form.id === 'admin-lifestyle-form') {
         table = 'patient_notifications';
-        record = { patient_id: values.patient_id, category: 'lifestyle', title: values.title.trim(), message: values.message.trim(), created_by: activeUser.id };
+        record = { patient_id: values.patient_id, category: 'lifestyle', title: values.title.trim(), message: values.message.trim() };
       } else {
         table = 'appointments';
         record = {
