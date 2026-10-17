@@ -25,7 +25,7 @@ function refreshPublicSettings(){
     const [year,month,day]=String(siteSettings.consult_prices_valid_until).slice(0,10).split('-').map(Number);
     validUntil.textContent=new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'long',year:'numeric'}).format(new Date(year,month-1,day));
   }
-  const host=document.querySelector('#public-announcement');if(!host||!siteSettings)return;
+  const host=document.querySelector('#public-announcement');if(!host||!siteSettings)return; host.hidden=true; host.innerHTML='';
   const now=Date.now(),start=siteSettings.announcement_starts_at?Date.parse(siteSettings.announcement_starts_at):0,end=siteSettings.announcement_ends_at?Date.parse(siteSettings.announcement_ends_at):Infinity;
   if(!siteSettings.announcement_active||!siteSettings.announcement_title||!siteSettings.announcement_body||now<start||now>end)return;
   host.hidden=false;host.innerHTML='<article class="announcement-card"><div class="announcement-mark">ENT <span>·</span> AVISO</div><div><h2>'+escapeHtml(siteSettings.announcement_title)+'</h2><p>'+escapeHtml(siteSettings.announcement_body).replace(/\n/g,'<br>')+'</p></div></article>';
@@ -39,6 +39,7 @@ async function loadPublicSettings(){
   const officeDetails=document.querySelector('#office-details');if(officeDetails&&siteSettings.office_address)officeDetails.textContent='Pago en la primera cita presencial · '+siteSettings.office_address;
 }
 loadPublicSettings();
+if(publicClient){publicClient.channel('ent-public-settings').on('postgres_changes',{event:'*',schema:'public',table:'site_configuration',filter:'id=eq.1'},()=>loadPublicSettings()).subscribe();}
 const showToast = (message) => {
   toast.textContent = message;
   toast.classList.add('show');
@@ -136,6 +137,8 @@ document.addEventListener('click',async (event)=>{
 
   const consultation=event.target.closest('[data-consult-package]');
   if(consultation){startEnrollment(consultation.dataset.consultPackage,'');return;}
+  const consultationCard=event.target.closest('.consultation-card');
+  if(consultationCard && !event.target.closest('a,button,input,textarea,select')) { const cta=consultationCard.querySelector('[data-consult-package]'); if(cta){ startEnrollment(cta.dataset.consultPackage,''); return; } }
   const viewButton=event.target.closest('[data-view]');
   if(viewButton){const view=viewButton.dataset.view;document.querySelector('#mobile-panel').classList.remove('open');document.querySelector('.mobile-menu').setAttribute('aria-expanded','false');document.querySelector('.mobile-menu').setAttribute('aria-label','Abrir menú');document.querySelector('.mobile-menu').textContent='☰';if(view==='patient')patientDashboard();else if(view==='admin')adminDashboard();else if(view==='choose')document.querySelector('#consultas')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const tab=event.target.closest('[data-dash]');if(tab){modal.querySelectorAll('[data-dash]').forEach(b=>b.classList.toggle('active',b===tab));document.querySelector('#dash-content').innerHTML=dashboardContent(tab.dataset.dash);return;}
