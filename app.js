@@ -85,7 +85,16 @@ async function startEnrollment(serviceCode='initial', objective='') {
       <div class="preview-callout">Enviar la solicitud no confirma un pago ni una cita. No incluyas información médica sensible aquí.</div>
       <label class="consent-row"><input type="checkbox" name="consent" required><span>Autorizo a ENT a usar mis datos para responder esta solicitud y coordinar mi atención.</span></label><label class="consent-row"><input type="checkbox" name="whatsapp_consent" required><span>Acepto recibir por WhatsApp avisos sobre mi solicitud, cita y acceso al portal ENT.</span></label>
       <button class="button button-dark form-submit" type="submit" disabled>Enviar solicitud <span>↗</span></button><p class="form-note" id="request-feedback" role="status">Al enviar, se registrará en ENT y se abrirá WhatsApp con un aviso listo para confirmar.</p>
-    </form>`);
+    </form>
+    <div class="request-confirm-overlay" id="request-confirmation" hidden>
+      <section class="request-confirm-card" id="request-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="request-confirm-title" aria-describedby="request-confirm-description">
+        <div class="modal-kicker">ANTES DE ENVIAR</div>
+        <h2 id="request-confirm-title">Tu solicitud será revisada por ENT</h2>
+        <p id="request-confirm-description">La clínica ENT revisará tu solicitud y confirmará tu consulta. Cuando quede aprobada, recibirás tus credenciales de acceso por WhatsApp.</p>
+        <p class="request-confirm-note">Al continuar, se registrará tu solicitud. Después se abrirá WhatsApp con un mensaje preparado para avisar al consultorio; solo tendrás que tocar <strong>Enviar</strong> ahí.</p>
+        <div class="request-confirm-actions"><button class="button button-outline" type="button" id="request-confirm-back">Volver</button><button class="button button-dark" type="button" id="request-confirm-send">Continuar</button></div>
+      </section>
+    </div>`);
 
 }
 function patientDashboard() {
@@ -162,6 +171,59 @@ const updateRequestSubmitState=(form)=>{
 document.addEventListener('input',(event)=>{const form=event.target.closest?.('#consultation-request-form');if(form)updateRequestSubmitState(form);});
 document.addEventListener('change',(event)=>{const form=event.target.closest?.('#consultation-request-form');if(form)updateRequestSubmitState(form);});
 document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&modal.classList.contains('open'))closeModal();});
+const playRequestSuccessTone=(audioContext)=>{
+  if(!audioContext||audioContext.state!=='running')return;
+  const start=audioContext.currentTime;
+  [660,880].forEach((frequency,index)=>{
+    const oscillator=audioContext.createOscillator(),gain=audioContext.createGain(),at=start+index*.16;
+    oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency,at);
+    gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(.12,at+.025);gain.gain.exponentialRampToValueAtTime(.0001,at+.22);
+    oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(at);oscillator.stop(at+.23);
+  });
+};
+const sendConsultationRequest=async(form,overlay,audioContext)=>{
+  const button=form.querySelector('[type="submit"]'),feedback=form.querySelector('#request-feedback');
+  const card=overlay.querySelector('#request-confirm-card');
+  const setProgress=(success=false)=>{
+    card.innerHTML=`<div class="modal-kicker">${success?'SOLICITUD REGISTRADA':'ENVIANDO SOLICITUD'}</div>
+      <div class="request-progress-circle ${success?'is-complete':''}" aria-hidden="true"><span class="request-progress-fill"></span><span class="request-progress-check">✓</span></div>
+      <h2 id="request-confirm-title">${success?'Solicitud enviada':'Registrando tu solicitud'}</h2>
+      <p id="request-confirm-description">${success?'Tu solicitud quedó registrada. Ahora se abrirá WhatsApp para avisar a ENT.':'Estamos guardando tus datos y el comprobante de transferencia.'}</p>`;
+  };
+  overlay.setAttribute('aria-busy','true');setProgress(false);
+  try{
+    let adminPhone=String(siteSettings?.admin_whatsapp||'527711017152').replace(/\D/g,'');if(adminPhone.length===10)adminPhone='52'+adminPhone;
+    if(!adminPhone)throw new Error('ENT aún no configuró su WhatsApp.');
+    if(!publicClient)throw new Error('No hay conexión con el portal. Recarga la página e inténtalo de nuevo.');
+    const values=Object.fromEntries(new FormData(form).entries()),service=consultationServices[form.dataset.service];
+    const payload=new FormData(form);payload.set('plan_code',form.dataset.service);payload.set('payment_preference','transfer');
+    const {data,error}=await publicClient.functions.invoke('submit-consultation-request',{body:payload});
+    if(error)throw error;
+    if(!data?.success)throw new Error(data?.error||'No se pudo registrar la solicitud.');
+    const priceText=data.price==null?'Por confirmar':money(data.price);
+    const message=['*SOLICITUD DE CONSULTA ENT*','Folio: '+data.application_id,'Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Servicio: '+service.label,'Precio: '+priceText,'Comprobante de transferencia: cargado en el portal ENT.'].join('\\n');
+    setProgress(true);playRequestSuccessTone(audioContext);
+    const circle=card.querySelector('.request-progress-circle');requestAnimationFrame(()=>circle?.classList.add('is-complete'));
+    if(feedback)feedback.textContent='Solicitud registrada. Abriendo WhatsApp…';
+    window.setTimeout(()=>{window.location.href='https://wa.me/'+adminPhone+'?text='+encodeURIComponent(message);},1350);
+  }catch(error){
+    overlay.hidden=true;overlay.removeAttribute('aria-busy');
+    button.disabled=false;button.innerHTML='Intentar de nuevo <span>↗</span>';
+    if(feedback)feedback.textContent=error?.message||'No se pudo registrar la solicitud. Revisa tus datos e inténtalo de nuevo.';
+    console.error('ENT request failed:',error);
+  }
+};
+document.addEventListener('click',async(event)=>{
+  const back=event.target.closest?.('#request-confirm-back');
+  if(back){const overlay=back.closest('#request-confirmation');if(overlay)overlay.hidden=true;document.querySelector('#consultation-request-form [type="submit"]')?.focus();return;}
+  const send=event.target.closest?.('#request-confirm-send');
+  if(!send||send.disabled)return;
+  event.preventDefault();send.disabled=true;
+  const form=document.querySelector('#consultation-request-form'),overlay=send.closest('#request-confirmation');
+  const AudioCtor=window.AudioContext||window.webkitAudioContext;let audioContext=null;
+  try{if(AudioCtor){audioContext=new AudioCtor();audioContext.resume().catch(()=>{});}}catch(_){}
+  if(form&&overlay)await sendConsultationRequest(form,overlay,audioContext);
+});
 document.addEventListener('submit',async (event)=>{
   const form=event.target;
   if(form.id==='consultation-request-form'){
@@ -170,28 +232,8 @@ document.addEventListener('submit',async (event)=>{
     if(!form.checkValidity()){form.reportValidity();return;}
     const proof=form.querySelector('#request-payment-proof')?.files?.[0];
     if(!proof){form.querySelector('#request-payment-proof')?.focus();return;}
-    const button=form.querySelector('[type="submit"]'),feedback=form.querySelector('#request-feedback');
-    button.disabled=true;button.textContent='Enviando solicitud…';
-    const values=Object.fromEntries(new FormData(form).entries()),service=consultationServices[form.dataset.service];
-    try{
-      let adminPhone=String(siteSettings?.admin_whatsapp||'527711017152').replace(/\D/g,'');if(adminPhone.length===10)adminPhone='52'+adminPhone;
-      if(!adminPhone)throw new Error('ENT aún no configuró su WhatsApp.');
-      if(!publicClient)throw new Error('No hay conexión con el portal. Recarga la página e inténtalo de nuevo.');
-      const payload=new FormData(form);
-      payload.set('plan_code',form.dataset.service);
-      payload.set('payment_preference','transfer');
-      const {data,error}=await publicClient.functions.invoke('submit-consultation-request',{body:payload});
-      if(error)throw error;
-      if(!data?.success)throw new Error(data?.error||'No se pudo registrar la solicitud.');
-      const priceText=data.price==null?'Por confirmar':money(data.price);
-      const message=['*SOLICITUD DE CONSULTA ENT*','Folio: '+data.application_id,'Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Servicio: '+service.label,'Precio: '+priceText,'Comprobante de transferencia: cargado en el portal ENT.'].join('\n');
-      form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud registrada</h3><p>Tu solicitud y comprobante quedaron guardados. WhatsApp se abrirá con un aviso preparado; toca Enviar ahí para notificar a ENT.</p></div>';
-      window.location.href='https://wa.me/'+adminPhone+'?text='+encodeURIComponent(message);
-    }catch(error){
-      button.disabled=false;button.innerHTML='Reintentar envío <span>↗</span>';
-      if(feedback)feedback.textContent=error?.message||'No se pudo registrar la solicitud. Revisa tus datos e inténtalo de nuevo.';
-      console.error('ENT request failed:',error);
-    }
+    const confirmation=document.querySelector('#request-confirmation');
+    if(confirmation){confirmation.hidden=false;document.querySelector('#request-confirm-send')?.focus();}
     return;
   }
   if(form.id==='appointment-form'){event.preventDefault();showToast('Esta demostración no agenda ni guarda consultas.');closeModal();}
