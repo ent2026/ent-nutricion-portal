@@ -302,3 +302,32 @@
 .admin-form-success span{font-weight:600}
 .admin-form-success .button{flex:0 0 auto;margin:0}
 @media(max-width:650px){.admin-form-success{align-items:stretch;flex-direction:column}.admin-form-success .button{width:100%;justify-self:stretch}}
+
+
+/* Confirmación y envío de solicitudes ENT */
+.request-confirm-overlay{position:fixed;z-index:30;inset:0;display:grid;place-items:center;padding:20px;background:rgba(16,25,20,.68);backdrop-filter:blur(6px)}
+.request-confirm-overlay[hidden]{display:none!important}
+.request-confirm-card{width:min(460px,100%);padding:30px 28px;background:#fbfbf7;border:1px solid rgba(255,255,255,.55);box-shadow:0 24px 80px rgba(9,18,13,.28);text-align:center;animation:rise .22s ease}
+.request-confirm-card h2{margin:12px 0 10px;font:500 27px/1.16 var(--serif);letter-spacing:-.025em;color:#26362c}
+.request-confirm-card p{margin:0 auto 12px;max-width:370px;color:#637168;font-size:12px;line-height:1.7}
+.request-confirm-card .request-confirm-note{margin-top:16px;padding:12px 14px;background:#f0f2ec;color:#6b766d;font-size:10px}
+.request-confirm-note strong{color:#3e5445}
+.request-confirm-actions{display:flex;justify-content:center;gap:10px;margin-top:22px}
+.request-confirm-actions .button{min-width:132px;justify-content:center}
+.request-confirm-actions .button:disabled{opacity:.55;cursor:wait}
+.request-progress-circle{position:relative;width:78px;height:78px;margin:21px auto 17px;overflow:hidden;border-radius:50%;background:#bd5757;box-shadow:inset 0 0 0 1px rgba(30,40,32,.08)}
+.request-progress-fill{position:absolute;top:50%;left:50%;width:0;height:0;border-radius:50%;background:#4f966a;transform:translate(-50%,-50%);transition:width 1.15s cubic-bezier(.2,.72,.25,1),height 1.15s cubic-bezier(.2,.72,.25,1)}
+.request-progress-circle.is-complete .request-progress-fill{width:100%;height:100%}
+.request-progress-check{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:33px;font-weight:500;opacity:0;transform:scale(.7);transition:opacity .2s ease .95s,transform .2s ease .95s}
+.request-progress-circle.is-complete .request-progress-check{opacity:1;transform:scale(1)}
+@media(max-width:600px){
+  .request-confirm-card{padding:26px 20px}
+  .request-confirm-card h2{font-size:24px}
+  .request-confirm-actions{gap:8px}
+  .request-confirm-actions .button{min-width:0;flex:1;padding-left:12px;padding-right:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .request-confirm-card{animation:none}
+  .request-progress-fill{transition-duration:.35s}
+  .request-progress-check{transition-delay:.3s}
+}
