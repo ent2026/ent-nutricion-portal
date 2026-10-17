@@ -144,10 +144,10 @@ document.addEventListener('submit',async (event)=>{
       const {data,error}=await publicClient.functions.invoke('submit-consultation-request',{body:payload});
       if(error)throw error;
       if(!data?.success)throw new Error(data?.error||'No se pudo registrar la solicitud.');
-      let phone=String(siteSettings?.admin_whatsapp||'527711017152').replace(/\\D/g,'');if(phone.length===10)phone='52'+phone;
+      let phone=String(siteSettings?.admin_whatsapp||'527711017152').replace(/\D/g,'');if(phone.length===10)phone='52'+phone;
       const priceText=data.price==null?'Por confirmar':money(data.price);
       const messageLines=['Nueva solicitud ENT','Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Consulta: '+service.label,'Precio: '+priceText+' MXN','Objetivo: '+String(values.objective||'').trim(),'Pago: Transferencia bancaria',data.proof_url?'Comprobante (enlace privado, vence en 24 horas): '+data.proof_url:'Comprobante: no adjunto todavía','Revisar solicitud en el administrador ENT.'];
-      const whatsappUrl='https://wa.me/'+phone+'?text='+encodeURIComponent(messageLines.join('\\n'));
+      const whatsappUrl='https://wa.me/'+phone+'?text='+encodeURIComponent(messageLines.join('\n'));
       form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud recibida</h3><p>Gracias, '+escapeHtml(values.full_name)+'. ENT ya recibió tu solicitud'+(data.proof_url?' y guardó tu comprobante en un espacio privado.':' y revisará tus datos.')+'</p><a class="button button-dark" href="'+whatsappUrl+'" target="_blank" rel="noopener">Compartir solicitud por WhatsApp →</a><p class="form-note">'+(data.proof_url?'El mensaje incluye un enlace privado al comprobante que vence en 24 horas. ':'')+'WhatsApp abrirá el mensaje para que confirmes su envío.</p></div>';
     }catch(error){
       button.disabled=false;button.innerHTML='Reintentar envío <span>↗</span>';
