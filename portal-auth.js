@@ -480,9 +480,6 @@
     try{
       if(!entAdminAudioContext){
         entAdminAudioContext=new AudioCtor();
-        entAdminAudioContext.onstatechange=()=>{
-          if(entAdminAudioContext?.state==='running'&&activeApplicationAlerts.size)playEntAdminApplicationAlert();
-        };
       }
       if(entAdminAudioContext.state==='suspended')entAdminAudioContext.resume().catch(()=>{});
       return entAdminAudioContext;
