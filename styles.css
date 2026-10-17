@@ -340,3 +340,10 @@
 @keyframes entNewApplicationsFlash{0%{background-color:rgba(186,32,43,1);box-shadow:0 0 0 3px rgba(186,32,43,1)}100%{background-color:rgba(186,32,43,0);box-shadow:0 0 0 0 rgba(186,32,43,0)}}
 @media(max-width:650px){.admin-new-applications-alert.is-alerting{padding:13px;animation-duration:1.15s}.admin-new-applications-alert .dash-panel-head{gap:10px}.admin-new-applications-alert .dash-panel-head h3{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.admin-new-applications-alert.is-alerting{animation:none;background:#f7dfe1;box-shadow:0 0 0 3px #ba202b}.admin-new-applications-alert.is-alerting .dash-panel-head h3,.admin-new-applications-alert.is-alerting .dash-panel-head span{color:#7e1d24}}
+
+.new-application-alert-banner{margin:0 0 13px;padding:13px 15px;border:2px solid #ba202b;border-radius:2px;background:#ba202b;color:#fff;font-size:12px;line-height:1.45;animation:entNewApplicationsFlash 1.15s ease-out infinite}
+.new-application-alert-banner b{display:block;margin-bottom:3px;letter-spacing:.08em;font-size:10px}
+.admin-new-applications-alert.is-alerting .application-alert-row{animation:entApplicationRowFlash 1.15s ease-out infinite}
+@keyframes entApplicationRowFlash{0%{background-color:rgba(186,32,43,1);color:#fff}100%{background-color:rgba(186,32,43,0);color:inherit}}
+@media(max-width:650px){.new-application-alert-banner{font-size:11px;padding:12px}.new-application-alert-banner b{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.new-application-alert-banner,.admin-new-applications-alert.is-alerting .application-alert-row{animation:none;background:#f7dfe1;color:#7e1d24}}
