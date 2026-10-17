@@ -503,7 +503,7 @@
         oscillator.type='square';
         oscillator.frequency.setValueAtTime(frequency,at);
         envelope.gain.setValueAtTime(.0001,at);
-        envelope.gain.exponentialRampToValueAtTime(.85,at+.02);
+        envelope.gain.exponentialRampToValueAtTime(1,at+.02);
         envelope.gain.exponentialRampToValueAtTime(.0001,at+.23);
         oscillator.connect(envelope);envelope.connect(ctx.destination);
         oscillator.start(at);oscillator.stop(at+.24);
