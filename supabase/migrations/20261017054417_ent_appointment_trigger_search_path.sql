@@ -1,0 +1,1 @@
+alter function public.ent_protect_patient_appointment_update() set search_path = '';
