@@ -22,6 +22,28 @@
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[char]));
   const normalizeUsername = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
+  const normalizeLifestyleVideoUrl = (raw = '') => {
+    let value=String(raw).trim();
+    if(!value)throw new Error('Pega el enlace del video de YouTube.');
+    if(/^http:\/\//i.test(value))value=value.replace(/^http:\/\//i,'https://');
+    else if(!/^[a-z][a-z0-9+.-]*:\/\//i.test(value))value=`https://${value.replace(/^\/\//,'')}`;
+    let url;
+    try{url=new URL(value)}catch(_){throw new Error('Escribe un enlace válido de YouTube.')}
+    const host=url.hostname.toLowerCase().replace(/\.$/,'');
+    if(url.protocol!=='https:'||url.username||url.password||!(host==='youtu.be'||host==='youtube.com'||host.endsWith('.youtube.com'))){
+      throw new Error('Usa un enlace seguro de YouTube: youtube.com o youtu.be.');
+    }
+    if(url.port&&url.port!=='443')throw new Error('El enlace de YouTube contiene un puerto no permitido.');
+    let videoId='';
+    if(host==='youtu.be')videoId=url.pathname.split('/').filter(Boolean)[0]||'';
+    else if(url.pathname==='/watch')videoId=url.searchParams.get('v')||'';
+    else{
+      const match=url.pathname.match(/^\/(?:shorts|embed|live|v)\/([A-Za-z0-9_-]+)\/?$/);
+      videoId=match?.[1]||'';
+    }
+    if(!/^[A-Za-z0-9_-]{6,20}$/.test(videoId))throw new Error('El enlace debe abrir un video de YouTube (watch, Shorts, Live o youtu.be).');
+    return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+  };
   const serviceLabels = { initial: 'Consulta inicial', followup: 'Consulta de seguimiento', bimonthly: 'Paquete bimestral · 2 consultas', quarterly: 'Paquete trimestral · 3 consultas', semester: 'Paquete semestral · 6 consultas', couple: 'Consulta en pareja · 2 personas' };
   const serviceMonths = { initial: 1, followup: 1, bimonthly: 2, quarterly: 3, semester: 6, couple: 1 };
   const serviceLabel = (value) => serviceLabels[value] || 'Consulta por definir';
@@ -312,10 +334,20 @@
         </form>
       </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Lifestyle para todos</h3><span>CONTENIDO GENERAL</span></div>
-        <form class="live-admin-form" id="admin-lifestyle-form">
-          <input class="input" name="title" maxlength="160" required placeholder="Título del tema" aria-label="Título del tema" />
-          <input class="input" name="youtube_url" type="url" maxlength="500" required placeholder="Enlace de YouTube" aria-label="Enlace de YouTube" />
-          <button class="button button-dark" type="submit">Agregar Lifestyle</button>
+        <form class="live-admin-form lifestyle-admin-form" id="admin-lifestyle-form">
+          <p class="panel-note">Agrega uno o varios temas. Cada tema se publicará en el portal de todos los pacientes activos.</p>
+          <div class="lifestyle-entry-list">
+            <div class="lifestyle-entry">
+              <label class="lifestyle-entry-label">Tema 1</label>
+              <input class="input" name="title" maxlength="160" required placeholder="Título del tema" aria-label="Título del tema 1" />
+              <input class="input" name="youtube_url" type="text" inputmode="url" autocomplete="url" maxlength="500" required placeholder="youtube.com/watch?v=… o youtu.be/…" aria-label="Enlace de YouTube del tema 1" />
+              <button class="button button-outline lifestyle-remove" type="button" data-lifestyle-remove hidden>Quitar tema</button>
+            </div>
+          </div>
+          <div class="lifestyle-form-actions">
+            <button class="button button-outline" type="button" data-lifestyle-add>+ Agregar otro tema</button>
+            <button class="button button-dark" type="submit">Guardar temas Lifestyle</button>
+          </div>
         </form><div id="admin-lifestyle-list"></div>
       </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Preguntas frecuentes</h3><span>IMAGEN COMPARTIDA</span></div>
@@ -506,6 +538,34 @@
       const {error}=await client.from('patient_applications').delete().eq('id',id);
       if(error){setLoginError('No se pudo borrar la solicitud. Intenta de nuevo.');rejectApplication.disabled=false;return;}
       await renderAdmin();content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success">Solicitud y comprobante eliminados.</p>');return;
+    }
+    const lifestyleAdd=event.target.closest('[data-lifestyle-add]');
+    if(lifestyleAdd){
+      event.preventDefault();event.stopImmediatePropagation();
+      const list=content.querySelector('#admin-lifestyle-form .lifestyle-entry-list');
+      if(!list)return;
+      const number=list.querySelectorAll('.lifestyle-entry').length+1;
+      list.insertAdjacentHTML('beforeend',`<div class="lifestyle-entry">
+        <label class="lifestyle-entry-label">Tema ${number}</label>
+        <input class="input" name="title" maxlength="160" required placeholder="Título del tema" aria-label="Título del tema ${number}" />
+        <input class="input" name="youtube_url" type="text" inputmode="url" autocomplete="url" maxlength="500" required placeholder="youtube.com/watch?v=… o youtu.be/…" aria-label="Enlace de YouTube del tema ${number}" />
+        <button class="button button-outline lifestyle-remove" type="button" data-lifestyle-remove>Quitar tema</button>
+      </div>`);
+      return;
+    }
+    const lifestyleRemove=event.target.closest('[data-lifestyle-remove]');
+    if(lifestyleRemove){
+      event.preventDefault();event.stopImmediatePropagation();
+      lifestyleRemove.closest('.lifestyle-entry')?.remove();
+      const entries=content.querySelectorAll('#admin-lifestyle-form .lifestyle-entry');
+      entries.forEach((entry,index)=>{
+        const number=index+1;
+        entry.querySelector('.lifestyle-entry-label').textContent=`Tema ${number}`;
+        entry.querySelector('input[name="title"]').setAttribute('aria-label',`Título del tema ${number}`);
+        entry.querySelector('input[name="youtube_url"]').setAttribute('aria-label',`Enlace de YouTube del tema ${number}`);
+        entry.querySelector('[data-lifestyle-remove]').hidden=entries.length===1;
+      });
+      return;
     }
     const lifestyleDelete=event.target.closest('[data-delete-lifestyle]');
     if(lifestyleDelete){
@@ -747,6 +807,33 @@
         if (form.id === 'admin-application-create-form') await createPatientAccount({ application_id: values.application_id, initial_password: values.initial_password, scheduled_at: new Date(values.scheduled_at).toISOString(), appointment_type: values.appointment_type, location_or_link: values.location_or_link.trim() });
         else await createPatientAccount({ full_name: values.full_name, username: values.username, phone: values.phone, age: Number(values.age), plan_code: values.plan_code, plan_months: serviceMonths[values.plan_code], initial_password: values.initial_password });
       } catch (error) { setLoginError(error.message || 'No se pudo crear la cuenta.');button.disabled=false;button.textContent='Reintentar alta'; }
+      return;
+    }
+    if(form.id==='admin-lifestyle-form'){
+      event.preventDefault();event.stopImmediatePropagation();
+      const submit=form.querySelector('[type="submit"]');
+      submit.disabled=true;submit.textContent='Guardando…';
+      try{
+        const titles=[...form.querySelectorAll('input[name="title"]')];
+        const urls=[...form.querySelectorAll('input[name="youtube_url"]')];
+        if(!titles.length||titles.length!==urls.length)throw new Error('Completa título y enlace para cada tema Lifestyle.');
+        const records=titles.map((titleField,index)=>{
+          const title=titleField.value.trim();
+          const youtubeUrl=normalizeLifestyleVideoUrl(urls[index].value);
+          if(!title)throw new Error(`Escribe el título del tema ${index+1}.`);
+          if(title.length>160)throw new Error(`El título del tema ${index+1} supera 160 caracteres.`);
+          return {title,youtube_url:youtubeUrl,created_by:activeUser.id};
+        });
+        const {error}=await client.from('lifestyle_library').insert(records);
+        if(error)throw error;
+        await renderAdmin();
+        content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin',`<p class="admin-success">Se guardaron ${records.length} tema(s) Lifestyle para los pacientes activos.</p>`);
+      }catch(error){
+        setLoginError(error.message||'No se pudieron guardar los temas Lifestyle. Revisa los enlaces y vuelve a intentarlo.');
+        const liveNotice=content.querySelector('.live-notice');
+        if(liveNotice)liveNotice.textContent=error.message||'No se pudieron guardar los temas Lifestyle.';
+        submit.disabled=false;submit.textContent='Intentar de nuevo';
+      }
       return;
     }
     if (form.id.startsWith('admin-') && form.id.endsWith('-form')) {
