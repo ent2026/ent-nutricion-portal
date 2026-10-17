@@ -73,7 +73,7 @@ async function startEnrollment(serviceCode='initial', objective='') {
     <div class="selected-price">Precio vigente: ${escapeHtml(price)} MXN</div>
     <form id="consultation-request-form" data-service="${escapeHtml(serviceCode)}">
       <div class="form-grid">
-        <div><label class="form-label" for="request-full-name">Nombre completo</label><input class="input" id="request-full-name" name="full_name" required minlength="2" maxlength="160" autocomplete="name" /></div>
+        <div><label class="form-label" for="request-first-name">Nombres</label><input class="input" id="request-first-name" name="first_name" required minlength="1" maxlength="80" autocomplete="given-name" /></div><div><label class="form-label" for="request-last-name">Apellidos</label><input class="input" id="request-last-name" name="last_name" required minlength="1" maxlength="80" autocomplete="family-name" /></div>
         <div><label class="form-label" for="request-age">Edad</label><input class="input" id="request-age" name="age" type="number" min="1" max="120" step="1" required inputmode="numeric" /></div><div><label class="form-label" for="request-phone">Teléfono / WhatsApp</label><input class="input" id="request-phone" name="phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" inputmode="tel" /></div>
         <div><label class="form-label" for="request-objective">Objetivo principal</label><select class="select" id="request-objective" name="objective" required><option value="" disabled selected>Selecciona tu objetivo</option><option>Mejorar hábitos y composición corporal</option><option>Rendimiento deportivo</option><option ${objective==='Preparación para competir'?'selected':''}>Preparación para competir</option><option>Otro objetivo</option></select></div>
       </div>
@@ -196,12 +196,13 @@ const sendConsultationRequest=async(form,overlay,audioContext)=>{
     if(!adminPhone)throw new Error('ENT aún no configuró su WhatsApp.');
     if(!publicClient)throw new Error('No hay conexión con el portal. Recarga la página e inténtalo de nuevo.');
     const values=Object.fromEntries(new FormData(form).entries()),service=consultationServices[form.dataset.service];
-    const payload=new FormData(form);payload.set('plan_code',form.dataset.service);payload.set('payment_preference','transfer');
+    const fullName=[String(values.first_name||'').trim(),String(values.last_name||'').trim()].filter(Boolean).join(' ');
+    const payload=new FormData(form);payload.set('full_name',fullName);payload.set('plan_code',form.dataset.service);payload.set('payment_preference','transfer');
     const {data,error}=await publicClient.functions.invoke('submit-consultation-request',{body:payload});
     if(error)throw error;
     if(!data?.success)throw new Error(data?.error||'No se pudo registrar la solicitud.');
     const priceText=data.price==null?'Por confirmar':money(data.price);
-    const message=['*SOLICITUD DE CONSULTA ENT*','Folio: '+data.application_id,'Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Servicio: '+service.label,'Precio: '+priceText,'Comprobante de transferencia: cargado en el portal ENT.'].join('\\n');
+    const message=['*SOLICITUD DE CONSULTA ENT*','Folio: '+data.application_id,'Nombre: '+fullName,'Teléfono: '+String(values.phone||'').trim(),'Servicio: '+service.label,'Precio: '+priceText,'Comprobante de transferencia: cargado en el portal ENT.'].join('\\n');
     setProgress(true);playRequestSuccessTone(audioContext);
     const circle=card.querySelector('.request-progress-circle');requestAnimationFrame(()=>circle?.classList.add('is-complete'));
     if(feedback)feedback.textContent='Solicitud registrada. Abriendo WhatsApp…';
