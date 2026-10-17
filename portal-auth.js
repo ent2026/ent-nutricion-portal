@@ -87,39 +87,8 @@
   </div>`);
   const showFirstPasswordForm = () => showModal(`<div class="dashboard login-wrap"><div class="modal-kicker">ACTIVA TU ACCESO</div><h2 id="modal-title">Crea una contraseña personal</h2><p class="modal-lede">Por seguridad, reemplaza tu clave temporal antes de entrar a tu perfil.</p><form id="ent-first-password-form"><label class="form-label" for="new-patient-password">Nueva contraseña</label><input class="input" id="new-patient-password" name="password" type="password" autocomplete="new-password" minlength="12" required /><label class="form-label" for="confirm-patient-password">Confirma la contraseña</label><input class="input" id="confirm-patient-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /><p class="login-error" id="ent-login-error" role="alert" hidden></p><button class="button button-dark form-submit" type="submit">Guardar y continuar →</button></form></div>`);
   const metric = (label, value, unit) => `<div class="metric"><small>${label}</small><strong>${value ?? '—'} <i>${unit}</i></strong></div>`;
-  const photoBucket = 'patient-progress';
-  const isSupportedPhoto = (file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && file.size <= 5 * 1024 * 1024;
-  const photoExtension = (file) => ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type] || 'jpg');
-  const renderPhotoCards = async (patientId, isAdmin = false) => {
-    const { data, error } = await client.storage.from(photoBucket).list(patientId, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
-    if (error) throw error;
-    const files = (data || []).filter((file) => file.id && /\.(jpe?g|png|webp)$/i.test(file.name));
-    const cards = await Promise.all(files.map(async (file) => {
-      const path = `${patientId}/${file.name}`;
-      const { data: signed, error: urlError } = await client.storage.from(photoBucket).createSignedUrl(path, 600);
-      if (urlError) throw urlError;
-      return `<article class="progress-photo"><img src="${escapeHtml(signed.signedUrl)}" alt="Foto de progreso del paciente" loading="lazy" /><small>${escapeHtml(dateLabel(file.created_at || file.updated_at))}</small>${isAdmin ? `<div class="progress-photo-actions"><button class="button button-outline" type="button" data-replace-patient-photo="${escapeHtml(file.name)}">Reemplazar</button><button class="button button-outline" type="button" data-delete-patient-photo="${escapeHtml(file.name)}">Eliminar</button></div>` : ''}</article>`;
-    }));
-    return cards;
-  };
-  const renderAdminPhotoGallery = async (patientId) => {
-    const gallery = content.querySelector('#admin-photo-gallery');
-    if (!gallery) return;
-    if (!patientId) { gallery.innerHTML = '<p class="panel-note">Selecciona un paciente para ver sus fotos.</p>'; return; }
-    gallery.innerHTML = '<p class="panel-note">Cargando fotos privadas…</p>';
-    try {
-      const cards = await renderPhotoCards(patientId, true);
-      gallery.innerHTML = cards.length ? `<div class="progress-photo-grid">${cards.join('')}</div>` : '<p class="panel-note">Este expediente aún no tiene fotos de progreso.</p>';
-    } catch (error) {
-      gallery.innerHTML = '<p class="login-error" role="alert">No se pudieron cargar las fotos de este expediente.</p>';
-    }
-  };
-  const setPhotoFeedback = (message, isError = false) => {
-    const box = content.querySelector('#admin-photo-status');
-    if (box) { box.textContent = message; box.classList.toggle('error', isError); }
-  };
-  const patientTabs = ['resumen', 'mediciones', 'dieta', 'entrenamiento', 'fotos', 'citas', 'avisos'];
-  const tabTitle = { resumen: 'Resumen', mediciones: 'Mediciones', dieta: 'Mi dieta', entrenamiento: 'Entrenamiento', citas: 'Consultas', avisos: 'Avisos', fotos: 'Fotos de progreso' };
+  const patientTabs = ['resumen', 'mediciones', 'dieta', 'entrenamiento', 'clases', 'citas', 'lifestyle', 'avisos'];
+  const tabTitle = { resumen: 'Resumen', mediciones: 'Mediciones', dieta: 'Mi dieta', entrenamiento: 'Entrenamiento', clases: 'Clases', citas: 'Consultas', lifestyle: 'Lifestyle', avisos: 'Avisos' };
 
   const patientView = async (tab = activeTab) => {
     activeTab = tab;
@@ -144,36 +113,40 @@
     } else if (tab === 'dieta') {
       const { data, error } = await client.from('nutrition_updates').select('*').eq('patient_id', userId).eq('is_published', true).order('created_at', { ascending: false });
       if (error) throw error;
-      inner = data?.length ? (await Promise.all(data.map(async (item) => {
-        let pdfUrl = '';
-        if (item.diet_pdf_path) {
-          const { data: signed, error: signedError } = await client.storage.from('nutrition-files').createSignedUrl(item.diet_pdf_path, 1800);
-          if (signedError) throw signedError;
-          pdfUrl = signed.signedUrl;
-        }
+      inner = data?.length ? data.map((item) => {
+        const available = Boolean(item.diet_pdf_path) && !item.diet_pdf_downloaded_at;
         const dietText = item.diet_content && item.diet_content !== 'Consulta el PDF adjunto de tu dieta.' ? `<div class="live-plan-text">${escapeHtml(item.diet_content)}</div>` : '';
-        const pdfViewer = pdfUrl ? `<div class="diet-pdf-actions"><a class="button button-dark" href="${escapeHtml(pdfUrl)}" target="_blank" rel="noopener">Abrir PDF de dieta ↗</a><small>${escapeHtml(item.diet_pdf_name || 'Documento PDF')}</small></div><iframe class="diet-pdf-viewer" src="${escapeHtml(pdfUrl)}#view=FitH" title="Dieta en PDF: ${escapeHtml(item.title)}" loading="lazy"></iframe>` : '';
-        return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${pdfViewer}${dietText}${item.recommendations ? `<div class="panel-note">${escapeHtml(item.recommendations)}</div>` : ''}</section>`;
-      }))).join('') : '<section class="dash-panel dash-content-wide"><h3>Aún no hay una dieta publicada</h3><p class="panel-note">La actualización aparecerá aquí cuando tu nutriólogo la publique.</p></section>';
+        const pdfAction = available ? `<div class="diet-pdf-actions"><button class="button button-dark" type="button" data-download-diet="${escapeHtml(item.id)}" data-file-name="${escapeHtml(item.diet_pdf_name || 'Dieta ENT.pdf')}">Descargar dieta ↓</button><small>${escapeHtml(item.diet_pdf_name || 'Documento PDF')} · se elimina del almacenamiento al descargar</small></div>` : item.diet_pdf_downloaded_at || !item.diet_pdf_path ? '<p class="panel-note">El archivo se retiró del almacenamiento después de descargarse. Si necesitas otra copia, solicítala a ENT.</p>' : '';
+        return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${pdfAction}${dietText}${item.recommendations ? `<div class="panel-note">${escapeHtml(item.recommendations)}</div>` : ''}</section>`;
+      }).join('') : '<section class="dash-panel dash-content-wide"><h3>Aún no hay una dieta publicada</h3><p class="panel-note">La actualización aparecerá aquí cuando tu nutriólogo la publique.</p></section>';
     } else if (tab === 'entrenamiento') {
-      const { data, error } = await client.from('training_plans').select('*').eq('patient_id', userId).eq('is_published', true).order('created_at', { ascending: false });
+      const { data, error } = await client.from('training_plans').select('*').eq('patient_id', userId).eq('content_type', 'plan').eq('is_published', true).order('created_at', { ascending: false });
       if (error) throw error;
       inner = data?.length ? data.map((item) => `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div><div class="live-plan-text">${escapeHtml(item.plan_content)}</div></section>`).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Tu nutriólogo publicará aquí una rutina personalizada cuando forme parte de tu seguimiento.</p></section>';
+    } else if (tab === 'clases') {
+      const { data, error } = await client.from('training_plans').select('title,plan_content,video_url,published_at,created_at').eq('patient_id', userId).eq('content_type', 'class').eq('is_published', true).order('created_at', { ascending: false });
+      if (error) throw error;
+      inner = data?.length ? data.map((item) => {
+        let videoLink = '';
+        try { const url = new URL(item.video_url); if (url.protocol === 'https:' && ['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(url.hostname)) videoLink = url.href; } catch (_) {}
+        return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${item.plan_content ? `<p class="panel-note">${escapeHtml(item.plan_content)}</p>` : ''}${videoLink ? `<a class="button button-dark" href="${escapeHtml(videoLink)}" target="_blank" rel="noopener noreferrer">Abrir clase en YouTube ↗</a>` : '<p class="panel-note">El enlace de esta clase no está disponible.</p>'}</section>`;
+      }).join('') : '<section class="dash-panel dash-content-wide"><h3>Tus clases aparecerán aquí</h3><p class="panel-note">Cuando ENT te asigne una clase de entrenamiento, podrás abrir el video desde este apartado.</p></section>';
+    } else if (tab === 'lifestyle') {
+      const { data, error } = await client.from('patient_notifications').select('title,message,created_at').eq('patient_id', userId).eq('category', 'lifestyle').order('created_at', { ascending: false }).limit(50);
+      if (error) throw error;
+      inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Lifestyle</h3><span>CONTENIDO PARA TI</span></div>${data?.length ? data.map((item) => `<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(dateLabel(item.created_at))}</span></div><div class="live-plan-text lifestyle-copy">${escapeHtml(item.message)}</div></article>`).join('') : '<p class="panel-note">El contenido Lifestyle que tu nutriólogo prepare aparecerá aquí.</p>'}</section>`;
     } else if (tab === 'citas') {
       const { data, error } = await client.from('appointments').select('scheduled_at,appointment_type,location_or_link,status').eq('patient_id', userId).order('scheduled_at', { ascending: false });
       if (error) throw error;
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Mis consultas</h3><span>HISTORIAL</span></div>${data?.length ? data.map((item) => `<div class="hist-row"><span><b>${escapeHtml(dateTimeLabel(item.scheduled_at))}</b><br><small>${item.appointment_type === 'online' ? 'En línea' : 'Presencial'} · ${escapeHtml(item.status)}</small></span><small>${escapeHtml(item.location_or_link || 'Lugar por confirmar')}</small></div>`).join('') : '<p class="panel-note">Aún no hay consultas registradas.</p>'}</section>`;
     } else if (tab === 'avisos') {
       const [{ data: notices, error }, { data: reads, error: readsError }] = await Promise.all([
-        client.from('patient_notifications').select('id,category,title,message,created_at').eq('patient_id', userId).order('created_at', { ascending: false }).limit(50),
+        client.from('patient_notifications').select('id,category,title,message,created_at').eq('patient_id', userId).neq('category', 'lifestyle').order('created_at', { ascending: false }).limit(50),
         client.from('patient_notification_reads').select('notification_id').eq('patient_id', userId)
       ]);
       if (error) throw error;if(readsError)throw readsError;
       const seen = new Set((reads || []).map((row) => row.notification_id));
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Notificaciones de tu perfil</h3><span>${(notices||[]).filter(row=>!seen.has(row.id)).length} NUEVAS</span></div>${notices?.length ? notices.map((item) => `<article class="notice-row ${seen.has(item.id)?'is-read':'is-unread'}"><span class="notice-dot"></span><div><small>${escapeHtml(dateTimeLabel(item.created_at))} · ${escapeHtml(item.category)}</small><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p>${seen.has(item.id)?'':'<button class="text-link" data-mark-read="'+escapeHtml(item.id)+'">Marcar como leída</button>'}</div></article>`).join('') : '<p class="panel-note">Aquí aparecerán los avisos de tu plan, mediciones y consultas.</p>'}</section>`;
-    } else if (tab === 'fotos') {
-      const cards = await renderPhotoCards(userId, false);
-      inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Mis fotos de progreso</h3><span>SOLO VISIBLES PARA TI Y ENT</span></div>${cards.length ? `<div class="progress-photo-grid patient-photo-grid">${cards.join('')}</div>` : '<p class="panel-note">Aún no hay fotos de progreso en tu perfil. Tu nutriólogo las añadirá cuando lo considere útil para tu seguimiento.</p>'}</section>`;
     }
     content.querySelector('#patient-live-content').innerHTML = inner;
   };
@@ -194,7 +167,7 @@
       client.from('patient_profiles').select('*').eq('user_id', patientId).single(),
       client.from('body_measurements').select('*').eq('patient_id', patientId).order('measured_on', { ascending: false }).limit(30),
       client.from('nutrition_updates').select('title,diet_content,recommendations,diet_pdf_path,diet_pdf_name,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
-      client.from('training_plans').select('title,plan_content,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
+      client.from('training_plans').select('title,plan_content,content_type,video_url,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
       client.from('appointments').select('scheduled_at,appointment_type,location_or_link,status').eq('patient_id', patientId).order('scheduled_at', { ascending: false }).limit(20),
       client.from('patient_notifications').select('category,title,message,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(30)
     ]);
@@ -203,18 +176,12 @@
     const profile = profileResult.data;
     const measurements = measurementsResult.data || [];
     const diets = dietsResult.data || [];
-    const dietsWithPdf = await Promise.all(diets.map(async (item) => {
-      if (!item.diet_pdf_path) return { ...item, pdf_url: '' };
-      const { data: signed, error: signedError } = await client.storage.from('nutrition-files').createSignedUrl(item.diet_pdf_path, 1800);
-      if (signedError) throw signedError;
-      return { ...item, pdf_url: signed.signedUrl };
-    }));
+    const dietsForDisplay = diets;
     const training = trainingResult.data || [];
     const appointments = appointmentsResult.data || [];
     const notices = noticesResult.data || [];
     const latest = measurements[0];
     const bmi = (row) => row?.weight_kg && row?.height_cm ? (Number(row.weight_kg)/(Number(row.height_cm)/100)**2).toFixed(1) : '—';
-    const photos = await renderPhotoCards(patientId, false);
     showModal(`<div class="dashboard patient-record">
       <div class="patient-record-actions"><button class="button button-outline" type="button" data-back-patient-directory>← Volver al directorio</button><button class="button button-danger" type="button" data-toggle-patient-delete>Dar de baja y eliminar</button></div>
       <form class="patient-delete-confirm" id="admin-delete-patient-form" data-patient-id="${escapeHtml(patientId)}" data-confirm-username="${escapeHtml(profile.username||'')}" hidden>
@@ -228,11 +195,10 @@
       <div class="dashboard-header"><div><div class="modal-kicker">EXPEDIENTE INDIVIDUAL</div><div class="profile-head"><div class="avatar"><span>${escapeHtml(String(profile.full_name||'P').slice(0,1).toUpperCase())}</span></div><div><h2 id="modal-title">${escapeHtml(profile.full_name)}</h2><p>${escapeHtml(profile.username||'Sin usuario')} · ${escapeHtml(serviceLabel(profile.plan_code))} · ${escapeHtml(profile.status)}</p></div></div></div></div>
       <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Datos del paciente</h3><span>PERFIL</span></div><div class="patient-record-facts"><div><small>USUARIO</small><strong>${escapeHtml(profile.username||'—')}</strong></div><div><small>TELÉFONO / WHATSAPP</small><strong>${escapeHtml(profile.phone||'—')}</strong></div><div><small>CONSULTA O PAQUETE</small><strong>${escapeHtml(serviceLabel(profile.plan_code))}</strong></div><div><small>ESTADO</small><strong>${escapeHtml(profile.status)}</strong></div><div><small>ALTA</small><strong>${escapeHtml(dateLabel(profile.created_at))}</strong></div></div></section>
       <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Última valoración</h3><span>${latest ? escapeHtml(dateLabel(latest.measured_on)) : 'SIN VALORACIONES'}</span></div><div class="metric-grid">${metric('PESO',latest?.weight_kg,'kg')}${metric('GRASA CORPORAL',latest?.body_fat_pct,'%')}${metric('MASA MUSCULAR',latest?.muscle_mass_kg,'kg')}${metric('IMC',bmi(latest),'')}${metric('GRASA VISCERAL',latest?.visceral_fat_index,'')}${metric('CINTURA',latest?.waist_cm,'cm')}</div>${measurements.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>FECHA</th><th>PESO</th><th>IMC</th><th>GRASA</th><th>MÚSCULO</th><th>VISCERAL</th><th>CINTURA</th><th>CADERA</th></tr></thead><tbody>${measurements.map((row)=>`<tr><td>${escapeHtml(dateLabel(row.measured_on))}</td><td>${row.weight_kg??'—'} kg</td><td>${bmi(row)}</td><td>${row.body_fat_pct??'—'} %</td><td>${row.muscle_mass_kg??'—'} kg</td><td>${row.visceral_fat_index??'—'}</td><td>${row.waist_cm??'—'} cm</td><td>${row.hip_cm??'—'} cm</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Todavía no hay mediciones registradas.</p>'}</section>
-      <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Dietas e indicaciones</h3><span>${diets.length} ACTUALIZACIONES</span></div>${dietsWithPdf.length ? dietsWithPdf.map((item)=>`<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(dateLabel(item.published_at||item.created_at))} · ${item.is_published?'PUBLICADA':'BORRADOR'}</span></div>${item.diet_pdf_path?`<p><a class="button button-outline" href="${escapeHtml(item.pdf_url)}" target="_blank" rel="noopener">Abrir PDF adjunto ↗</a> <small>${escapeHtml(item.diet_pdf_name||'Documento PDF')}</small></p>`:''}<div class="live-plan-text">${escapeHtml(item.diet_content)}</div>${item.recommendations?`<p class="panel-note">${escapeHtml(item.recommendations)}</p>`:''}</article>`).join('') : '<p class="panel-note">Todavía no hay dietas registradas.</p>'}</section>
-      <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Entrenamiento</h3><span>${training.length} PLANES</span></div>${training.length ? training.map((item)=>`<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(dateLabel(item.published_at||item.created_at))} · ${item.is_published?'PUBLICADO':'BORRADOR'}</span></div><div class="live-plan-text">${escapeHtml(item.plan_content)}</div></article>`).join('') : '<p class="panel-note">No hay planes de entrenamiento registrados.</p>'}</section>
+      <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Dietas e indicaciones</h3><span>${diets.length} ACTUALIZACIONES</span></div>${dietsForDisplay.length ? dietsForDisplay.map((item)=>`<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(dateLabel(item.published_at||item.created_at))} · ${item.is_published?'PUBLICADA':'BORRADOR'}</span></div>${item.diet_pdf_path?'<p class="panel-note">PDF disponible en el portal del paciente y se elimina del almacenamiento después de su descarga.</p>':item.diet_pdf_downloaded_at?'<p class="panel-note">PDF descargado y retirado del almacenamiento.</p>':''}<div class="live-plan-text">${escapeHtml(item.diet_content)}</div>${item.recommendations?`<p class="panel-note">${escapeHtml(item.recommendations)}</p>`:''}</article>`).join('') : '<p class="panel-note">Todavía no hay dietas registradas.</p>'}</section>
+      <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Entrenamiento y clases</h3><span>${training.length} PUBLICACIONES</span></div>${training.length ? training.map((item)=>`<article class="patient-record-item"><div class="dash-panel-head"><h4>${escapeHtml(item.title)}</h4><span>${item.content_type==='class'?'CLASE':'RUTINA'} · ${escapeHtml(dateLabel(item.published_at||item.created_at))}</span></div><div class="live-plan-text">${escapeHtml(item.plan_content||'')}</div>${item.video_url?`<p><a href="${escapeHtml(item.video_url)}" target="_blank" rel="noopener noreferrer">Abrir video ↗</a></p>`:''}</article>`).join('') : '<p class="panel-note">No hay planes de entrenamiento registrados.</p>'}</section>
       <section class="dash-panel"><div class="dash-panel-head"><h3>Consultas</h3><span>HISTORIAL</span></div>${appointments.length ? appointments.map((item)=>`<div class="hist-row"><span><b>${escapeHtml(dateTimeLabel(item.scheduled_at))}</b><br><small>${item.appointment_type==='online'?'En línea':'Presencial'} · ${escapeHtml(item.status)}</small></span><small>${escapeHtml(item.location_or_link||'Lugar por confirmar')}</small></div>`).join('') : '<p class="panel-note">No hay consultas registradas.</p>'}</section>
       <section class="dash-panel"><div class="dash-panel-head"><h3>Avisos enviados</h3><span>${notices.length}</span></div>${notices.length ? notices.map((item)=>`<article class="notice-row"><span class="notice-dot"></span><div><small>${escapeHtml(dateTimeLabel(item.created_at))} · ${escapeHtml(item.category)}</small><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p></div></article>`).join('') : '<p class="panel-note">No hay avisos registrados.</p>'}</section>
-      <section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Fotos de progreso</h3><span>ARCHIVO PRIVADO</span></div>${photos.length ? `<div class="progress-photo-grid patient-photo-grid">${photos.join('')}</div>` : '<p class="panel-note">No hay fotos registradas.</p>'}</section>
     </div>`);
   };
 
@@ -253,7 +219,7 @@
     for (const section of sections) {
       const title = (section.querySelector('h3')?.textContent || '').toLocaleLowerCase('es');
       const group = /precio|pago|aviso general/.test(title) ? 'settings'
-        : /foto|valoraci[oó]n|dieta|entrenamiento|consulta/.test(title) ? 'followup' : 'patients';
+        : /valoraci[oó]n|dieta|entrenamiento|consulta|lifestyle|clases/.test(title) ? 'followup' : 'patients';
       panels[group].append(section);
     }
     for (const [key, label] of Object.entries(labels)) {
@@ -311,7 +277,6 @@
         ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>EDAD</th><th>USUARIO SOLICITADO</th><th>CONSULTA O PAQUETE</th><th>OBJETIVO</th><th>TELÉFONO</th><th>COMPROBANTE</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.age ?? '—')} años</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(serviceLabel(row.plan_code))}</td><td>${escapeHtml(row.objective||'—')}</td><td>${escapeHtml(row.phone)}</td><td>${row.payment_proof_path ? (row.payment_proof_url ? `<a class="text-link" href="${escapeHtml(row.payment_proof_url)}" target="_blank" rel="noopener">Ver comprobante</a>` : 'No disponible') : 'No adjunto'}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}" data-app-name="${escapeHtml(row.full_name)}" data-app-age="${escapeHtml(row.age ?? '')}" data-app-username="${escapeHtml(row.username||'')}" data-app-phone="${escapeHtml(row.phone)}" data-app-objective="${escapeHtml(row.objective||'')}" data-app-plan="${escapeHtml(row.plan_code)}" data-app-months="${row.plan_months}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
       </section>
 
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Fotos de progreso</h3><span>ARCHIVO PRIVADO POR PACIENTE</span></div><label class="form-label" for="admin-photo-patient">Paciente</label><select class="select" id="admin-photo-patient"><option value="">Selecciona un paciente</option>${patientOptions}</select><form class="live-admin-form" id="admin-photo-form"><label class="form-label" for="admin-photo-files">Agregar fotografías</label><input class="input" id="admin-photo-files" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple required /><small class="photo-upload-hint">JPG, PNG o WebP · máximo 5 MB por archivo y hasta 8 fotos por carga. Solo ENT y el paciente pueden verlas.</small><button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar fotos</button><p id="admin-photo-status" class="photo-feedback" role="status" aria-live="polite"></p></form><div id="admin-photo-gallery"><p class="panel-note">Selecciona un paciente para ver sus fotos.</p></div></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Registrar valoración</h3><span>MEDICIONES</span></div>
         <form class="live-admin-form" id="admin-measurement-form"><label class="form-label" for="measurement-patient">Paciente</label><select class="select" id="measurement-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
           <div class="form-grid"><div><label class="form-label" for="measurement-date">Fecha</label><input class="input" id="measurement-date" name="measured_on" type="date" required value="${new Date().toISOString().slice(0, 10)}" /></div><div><label class="form-label" for="measurement-weight">Peso (kg)</label><input class="input" id="measurement-weight" name="weight_kg" type="number" min="0" max="500" step="0.01" /></div><div><label class="form-label" for="measurement-height">Estatura (cm)</label><input class="input" id="measurement-height" name="height_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-fat">Grasa corporal (%)</label><input class="input" id="measurement-fat" name="body_fat_pct" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-muscle">Masa muscular (kg)</label><input class="input" id="measurement-muscle" name="muscle_mass_kg" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-visceral">Índice visceral</label><input class="input" id="measurement-visceral" name="visceral_fat_index" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-waist">Cintura (cm)</label><input class="input" id="measurement-waist" name="waist_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-hip">Cadera (cm)</label><input class="input" id="measurement-hip" name="hip_cm" type="number" min="0" max="300" step="0.01" /></div></div>
@@ -334,6 +299,21 @@
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar entrenamiento</button>
         </form>
       </section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Clases de entrenamiento</h3><span>VIDEOS PERSONALIZADOS</span></div>
+        <form class="live-admin-form" id="admin-class-form"><label class="form-label" for="class-patient">Paciente</label><select class="select" id="class-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
+          <label class="form-label" for="class-title">Nombre de la clase</label><input class="input" id="class-title" name="title" maxlength="180" required placeholder="Ej. Técnica de sentadilla" />
+          <label class="form-label" for="class-url">Enlace de YouTube</label><input class="input" id="class-url" name="video_url" type="url" inputmode="url" maxlength="500" required placeholder="https://youtu.be/…" />
+          <label class="form-label" for="class-description">Indicaciones (opcional)</label><textarea class="input live-textarea" id="class-description" name="plan_content" maxlength="3000"></textarea>
+          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Asignar clase</button>
+        </form>
+      </section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Contenido Lifestyle</h3><span>LECTURA PERSONALIZADA</span></div>
+        <form class="live-admin-form" id="admin-lifestyle-form"><label class="form-label" for="lifestyle-patient">Paciente</label><select class="select" id="lifestyle-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
+          <label class="form-label" for="lifestyle-title">Título</label><input class="input" id="lifestyle-title" name="title" maxlength="180" required placeholder="Ej. Hábitos para mejorar el descanso" />
+          <label class="form-label" for="lifestyle-message">Información</label><textarea class="input live-textarea" id="lifestyle-message" name="message" maxlength="8000" required></textarea>
+          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar en Lifestyle</button>
+        </form>
+      </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Agendar consulta</h3><span>AGENDA</span></div>
         <form class="live-admin-form" id="admin-appointment-form"><label class="form-label" for="appointment-patient">Paciente</label><select class="select" id="appointment-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
           <div class="form-grid"><div><label class="form-label" for="appointment-date-time">Fecha y hora</label><input class="input" id="appointment-date-time" name="scheduled_at" type="datetime-local" required /></div><div><label class="form-label" for="appointment-type">Modalidad</label><select class="select" id="appointment-type" name="appointment_type" required><option value="" disabled selected>Elige modalidad</option><option value="in_person">Presencial</option><option value="online">En línea</option></select></div></div>
@@ -341,13 +321,9 @@
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar consulta</button>
         </form>
       </section>
-      <div class="preview-callout">Cada medición, dieta, rutina y consulta se guarda en el expediente elegido. Revisa el paciente seleccionado antes de publicar una actualización.</div>
+      <div class="preview-callout">Cada medición, dieta, rutina, clase, contenido Lifestyle y consulta se guarda en el expediente elegido. Revisa el paciente seleccionado antes de publicar.</div>
     </div>`);
     organizeAdminWorkspace();
-    if (patients.length) {
-      const photoSelect = content.querySelector('#admin-photo-patient');
-      if (photoSelect) { photoSelect.value = patients[0].user_id; await renderAdminPhotoGallery(photoSelect.value); }
-    }
   };
 
   const setLoginError = (message) => {
@@ -423,6 +399,37 @@
   };
 
   document.addEventListener('click', async (event) => {
+    const dietDownload = event.target.closest('[data-download-diet]');
+    if (dietDownload) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const button = dietDownload;
+      const updateId = button.dataset.downloadDiet;
+      const filename = String(button.dataset.fileName || 'Dieta ENT.pdf').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 150);
+      button.disabled = true; button.textContent = 'Preparando descarga…';
+      try {
+        const { data: sessionData, error: sessionError } = await client.auth.getSession();
+        if (sessionError || !sessionData?.session?.access_token) throw new Error('Tu sesión expiró. Inicia sesión de nuevo.');
+        const response = await fetch(`${config.url}/functions/v1/download-diet-pdf`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sessionData.session.access_token}`, 'apikey': config.publishableKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ update_id: updateId })
+        });
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || 'No se pudo preparar el PDF. Intenta de nuevo o contacta a ENT.');
+        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a'); anchor.href = objectUrl; anchor.download = filename;
+        document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+        await patientView('dieta');
+        content.querySelector('#patient-live-content')?.insertAdjacentHTML('afterbegin', '<p class="admin-success" role="status">PDF descargado. El archivo ya se retiró del almacenamiento de ENT.</p>');
+      } catch (error) {
+        button.disabled = false; button.textContent = 'Reintentar descarga';
+        content.querySelector('#patient-live-content')?.insertAdjacentHTML('afterbegin', `<p class="login-error" role="alert">${escapeHtml(error.message || 'No se pudo descargar el archivo.')}</p>`);
+      }
+      return;
+    }
     const bulkDelete = event.target.closest('[data-bulk-delete]');
     if (bulkDelete) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -506,36 +513,6 @@
       patientView(tabButton.dataset.liveTab).catch((error) => setLoginError(error.message || 'No se pudo cargar esta sección.'));
       return;
     }
-    const replacePhoto = event.target.closest('[data-replace-patient-photo]');
-    if (replacePhoto) {
-      event.preventDefault(); event.stopImmediatePropagation();
-      const patientId = content.querySelector('#admin-photo-patient')?.value;
-      const oldName = replacePhoto.dataset.replacePatientPhoto;
-      const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/jpeg,image/png,image/webp';
-      picker.onchange = async () => {
-        const file = picker.files?.[0]; if (!file) return;
-        if (!isSupportedPhoto(file)) { setPhotoFeedback('Usa una imagen JPG, PNG o WebP de máximo 5 MB.', true); return; }
-        setPhotoFeedback('Subiendo la foto nueva…');
-        const newName = `${Date.now()}-${crypto.randomUUID()}.${photoExtension(file)}`;
-        const { error: uploadError } = await client.storage.from(photoBucket).upload(`${patientId}/${newName}`, file, { cacheControl: '3600', contentType: file.type, upsert: false });
-        if (uploadError) { setPhotoFeedback('No se pudo cargar la nueva foto; la anterior se conserva.', true); return; }
-        const { error: removeError } = await client.storage.from(photoBucket).remove([`${patientId}/${oldName}`]);
-        if (removeError) setPhotoFeedback('La foto nueva se cargó; la anterior sigue guardada y puedes eliminarla después.', true);
-        else setPhotoFeedback('Foto reemplazada correctamente.');
-        await renderAdminPhotoGallery(patientId);
-      };
-      picker.click(); return;
-    }
-    const deletePhoto = event.target.closest('[data-delete-patient-photo]');
-    if (deletePhoto) {
-      event.preventDefault(); event.stopImmediatePropagation();
-      const patientId = content.querySelector('#admin-photo-patient')?.value;
-      if (!patientId || !window.confirm('¿Eliminar esta foto de progreso?')) return;
-      const { error } = await client.storage.from(photoBucket).remove([`${patientId}/${deletePhoto.dataset.deletePatientPhoto}`]);
-      if (error) { setPhotoFeedback('No se pudo eliminar la foto.'); return; }
-      setPhotoFeedback('Foto eliminada del expediente.');
-      await renderAdminPhotoGallery(patientId); return;
-    }
     const showDeleteForm = event.target.closest('[data-toggle-patient-delete]');
     if (showDeleteForm) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -588,10 +565,6 @@
       client?.auth.signOut().finally(() => { activeUser = null; activeProfile = null; closeModal(); showLogin(requestedView); });
     }
   }, true);
-
-  document.addEventListener('change', (event) => {
-    if (event.target.id === 'admin-photo-patient') renderAdminPhotoGallery(event.target.value);
-  });
 
   document.addEventListener('change', (event) => {
     const target = event.target;
@@ -678,31 +651,6 @@
       } catch (error) { setLoginError(error.message || 'No se pudo crear la cuenta.');button.disabled=false;button.textContent='Reintentar alta'; }
       return;
     }
-    if (form.id === 'admin-photo-form') {
-      event.preventDefault(); event.stopImmediatePropagation();
-      const patientId = content.querySelector('#admin-photo-patient')?.value;
-      const files = Array.from(form.elements.photos.files || []);
-      if (!patientId) { setPhotoFeedback('Selecciona el expediente al que pertenecen las fotos.', true); return; }
-      if (!files.length || files.length > 8) { setPhotoFeedback('Selecciona de 1 a 8 fotografías por carga.', true); return; }
-      if (files.some((file) => !isSupportedPhoto(file))) { setPhotoFeedback('Cada imagen debe ser JPG, PNG o WebP y pesar máximo 5 MB.', true); return; }
-      const button = form.querySelector('[type="submit"]'); button.disabled = true; button.textContent = 'Subiendo…';
-      let uploaded = 0;
-      try {
-        for (const file of files) {
-          const name = `${Date.now()}-${crypto.randomUUID()}.${photoExtension(file)}`;
-          const { error } = await client.storage.from(photoBucket).upload(`${patientId}/${name}`, file, { cacheControl: '3600', contentType: file.type, upsert: false });
-          if (error) throw error;
-          uploaded++;
-        }
-        form.reset();
-        setPhotoFeedback(`${uploaded} ${uploaded === 1 ? 'foto guardada' : 'fotos guardadas'} en el expediente privado.`);
-        await renderAdminPhotoGallery(patientId);
-      } catch (error) {
-        setPhotoFeedback(`Se guardaron ${uploaded} fotos; hubo un problema con la siguiente carga. Revisa el expediente y vuelve a intentar.`, true);
-        await renderAdminPhotoGallery(patientId);
-      } finally { button.disabled = false; button.textContent = 'Guardar fotos'; }
-      return;
-    }
     if (form.id.startsWith('admin-') && form.id.endsWith('-form')) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -775,10 +723,20 @@
           patient_id: values.patient_id,
           title: values.title.trim(),
           plan_content: values.plan_content.trim(),
+          content_type: 'plan',
           is_published: true,
           published_at: new Date().toISOString(),
           created_by: activeUser.id
         };
+      } else if (form.id === 'admin-class-form') {
+        let videoUrl;
+        try { videoUrl = new URL(values.video_url.trim()); } catch (_) { throw new Error('Escribe un enlace válido de YouTube.'); }
+        if (videoUrl.protocol !== 'https:' || !['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(videoUrl.hostname)) throw new Error('Usa un enlace seguro de youtube.com o youtu.be.');
+        table = 'training_plans';
+        record = { patient_id: values.patient_id, title: values.title.trim(), plan_content: values.plan_content.trim(), video_url: videoUrl.href, content_type: 'class', is_published: true, published_at: new Date().toISOString(), created_by: activeUser.id };
+      } else if (form.id === 'admin-lifestyle-form') {
+        table = 'patient_notifications';
+        record = { patient_id: values.patient_id, category: 'lifestyle', title: values.title.trim(), message: values.message.trim(), created_by: activeUser.id };
       } else {
         table = 'appointments';
         record = {
