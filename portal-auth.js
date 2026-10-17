@@ -17,6 +17,7 @@
   let pendingUser = null;
   let activeTab = 'resumen';
   let activeAdminPanel = 'patients';
+  const collapsedAdminForms = new Map();
 
   const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -372,6 +373,7 @@
       if(error)throw error;
       lifeList.innerHTML=data?.length?data.map(x=>`<div class="hist-row"><b>${escapeHtml(x.title)}</b><a href="${escapeHtml(x.youtube_url)}" target="_blank" rel="noopener">Abrir ↗</a><button class="button button-danger" data-delete-lifestyle="${escapeHtml(x.id)}">Eliminar</button></div>`).join(''):'<p class="panel-note">Aún no hay temas Lifestyle. Agrega un título y un enlace de YouTube.</p>';
     }
+    applyCollapsedAdminForms();
   };
 
   const setLoginError = (message) => {
@@ -380,6 +382,43 @@
     const panel = content.querySelector('#patient-live-content');
     if (panel) panel.innerHTML = `<section class="dash-panel"><p class="login-error" role="alert">${escapeHtml(message)}</p></section>`;
     else content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<p class="login-error live-notice" role="alert">${escapeHtml(message)}</p>`);
+  };
+  const adminFormMessages = {
+    'admin-measurement-form': { message:'Valoración y antropometría publicadas exitosamente.', action:'Registrar otra valoración' },
+    'admin-diet-form': { message:'Dieta publicada exitosamente.', action:'Publicar otra dieta' },
+    'admin-training-form': { message:'Entrenamiento publicado exitosamente.', action:'Publicar otro entrenamiento' },
+    'admin-lifestyle-form': { message:'Temas Lifestyle publicados exitosamente.', action:'Agregar más temas' },
+    'admin-appointment-form': { message:'Cita agendada exitosamente.', action:'Agendar otra cita' },
+    'admin-faq-form': { message:'Preguntas frecuentes actualizadas exitosamente.', action:'Actualizar imagen' }
+  };
+  const applyCollapsedAdminForms = () => {
+    for(const [formId,message] of collapsedAdminForms){
+      const form=content.querySelector('#'+CSS.escape(formId));
+      const panel=form?.closest('.admin-section');
+      if(!form||!panel)continue;
+      form.reset();
+      form.hidden=true;
+      let status=panel.querySelector('[data-admin-form-success]');
+      if(!status){
+        status=document.createElement('div');
+        status.className='admin-form-success';
+        status.dataset.adminFormSuccess=formId;
+        status.setAttribute('role','status');
+        const text=document.createElement('span');
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='button button-outline';
+        button.dataset.reopenAdminForm=formId;
+        status.append(text,button);
+        form.insertAdjacentElement('afterend',status);
+      }
+      status.querySelector('span').textContent=message;
+      status.querySelector('button').textContent=adminFormMessages[formId]?.action||'Abrir formulario';
+    }
+  };
+  const collapseSavedAdminForm = (formId,message) => {
+    collapsedAdminForms.set(formId,message);
+    applyCollapsedAdminForms();
   };
   const showApplicationAccessForm = (application) => showModal(`<div class="dashboard login-wrap">
     <div class="modal-kicker">ALTA DE PACIENTE · SOLICITUD EN LÍNEA</div><h2 id="modal-title">${escapeHtml(application.name)}</h2>
@@ -541,6 +580,15 @@
       const {error}=await client.from('patient_applications').delete().eq('id',id);
       if(error){setLoginError('No se pudo borrar la solicitud. Intenta de nuevo.');rejectApplication.disabled=false;return;}
       await renderAdmin();content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success">Solicitud y comprobante eliminados.</p>');return;
+    }
+    const reopenAdminForm=event.target.closest('[data-reopen-admin-form]');
+    if(reopenAdminForm){
+      event.preventDefault();event.stopImmediatePropagation();
+      const formId=reopenAdminForm.dataset.reopenAdminForm;
+      const form=content.querySelector('#'+CSS.escape(formId));
+      const status=reopenAdminForm.closest('[data-admin-form-success]');
+      if(form){collapsedAdminForms.delete(formId);status?.remove();form.hidden=false;form.querySelector('input:not([type="file"]),select,textarea')?.focus({preventScroll:true});form.scrollIntoView({behavior:'smooth',block:'center'});}
+      return;
     }
     const lifestyleAdd=event.target.closest('[data-lifestyle-add]');
     if(lifestyleAdd){
@@ -816,6 +864,8 @@
       event.preventDefault();event.stopImmediatePropagation();
       const submit=form.querySelector('[type="submit"]');
       submit.disabled=true;submit.textContent='Guardando…';
+      let lifestyleSaved=false;
+      let lifestyleCount=0;
       try{
         const titles=[...form.querySelectorAll('input[name="title"]')];
         const urls=[...form.querySelectorAll('input[name="youtube_url"]')];
@@ -829,13 +879,20 @@
         });
         const {error}=await client.from('lifestyle_library').insert(records);
         if(error)throw error;
+        lifestyleSaved=true;lifestyleCount=records.length;
         await renderAdmin();
-        content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin',`<p class="admin-success">Se guardaron ${records.length} tema(s) Lifestyle para los pacientes activos.</p>`);
+        collapseSavedAdminForm('admin-lifestyle-form',`Se publicaron ${records.length} tema(s) Lifestyle exitosamente.`);
       }catch(error){
-        setLoginError(error.message||'No se pudieron guardar los temas Lifestyle. Revisa los enlaces y vuelve a intentarlo.');
-        const liveNotice=content.querySelector('.live-notice');
-        if(liveNotice)liveNotice.textContent=error.message||'No se pudieron guardar los temas Lifestyle.';
-        submit.disabled=false;submit.textContent='Intentar de nuevo';
+        if(lifestyleSaved){
+          try{await renderAdmin()}catch(_){}
+          collapseSavedAdminForm('admin-lifestyle-form',`Se publicaron ${lifestyleCount} tema(s) Lifestyle. No repitas el envío.`);
+          content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="login-error live-notice" role="alert">Los temas se guardaron, pero no se pudo actualizar el panel. No repitas el envío.</p>');
+        }else{
+          setLoginError(error.message||'No se pudieron guardar los temas Lifestyle. Revisa los enlaces y vuelve a intentarlo.');
+          const liveNotice=content.querySelector('.live-notice');
+          if(liveNotice)liveNotice.textContent=error.message||'No se pudieron guardar los temas Lifestyle.';
+          submit.disabled=false;submit.textContent='Intentar de nuevo';
+        }
       }
       return;
     }
@@ -851,6 +908,7 @@
       let record;
       let uploadedDietPdfPath = null;
       let dietRecordSaved = false;
+      let adminRecordSaved = false;
       if (form.id === 'admin-config-form') {
         const datetimeOrNull = (value) => value ? new Date(value).toISOString() : null;
         record = {
@@ -888,7 +946,7 @@
         const {data:old}=await client.from('faq_visual').select('image_path').eq('id',1).maybeSingle();
         const {error:saveError}=await client.from('faq_visual').upsert({id:1,image_path:path,image_name:file.name,updated_by:activeUser.id,updated_at:new Date().toISOString()});
         if(saveError){await client.storage.from('ent-faq-images').remove([path]);throw saveError;}
-        if(old?.image_path)await client.storage.from('ent-faq-images').remove([old.image_path]);await renderAdmin();return;
+        if(old?.image_path)await client.storage.from('ent-faq-images').remove([old.image_path]);await renderAdmin();collapseSavedAdminForm('admin-faq-form','Preguntas frecuentes actualizadas exitosamente.');return;
       }
       if (form.id === 'admin-measurement-form') {
         table = 'body_measurements';
@@ -987,14 +1045,16 @@
         const patientName = selectedPatient?.textContent.split(' · ')[0] || 'paciente';
         const { error } = await client.from(table).insert(record);
         if (error) throw error;
+        adminRecordSaved = true;
+        if (form.id === 'admin-diet-form' || form.id === 'admin-training-form') dietRecordSaved = true;
         if(form.id==='admin-measurement-form'||form.id==='admin-diet-form'||form.id==='admin-training-form'||form.id==='admin-appointment-form'){
           const category=form.id==='admin-measurement-form'?'measurement':form.id==='admin-diet-form'?'diet':form.id==='admin-training-form'?'training':'appointment';
           const title=category==='measurement'?'Nueva medición publicada':category==='diet'?'Tu dieta está actualizada':category==='training'?'Nuevo entrenamiento publicado':'Consulta agendada';
           const message=category==='appointment'?'ENT registró una consulta en tu perfil. Revisa fecha y hora en Consultas.':'ENT actualizó información en tu perfil. Entra para revisarla.';
           const {error:noticeError}=await client.from('patient_notifications').insert({patient_id:values.patient_id,category,title,message});if(noticeError)throw noticeError;
         }
-        if (form.id === 'admin-diet-form'||form.id==='admin-training-form') dietRecordSaved = true;
         await renderAdmin();
+        if(adminFormMessages[form.id])collapseSavedAdminForm(form.id,adminFormMessages[form.id].message);
         if (patientPhone) {
           
           content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal whatsapp-ready"><b>Actualización publicada para ${escapeHtml(patientName)}</b><span>La notificación está disponible en el perfil ENT del paciente.</span></section>`);
@@ -1002,6 +1062,13 @@
       } catch (error) {
         if (uploadedDietPdfPath && !dietRecordSaved) {
           await client.storage.from(form.id==='admin-training-form'?'training-files':'nutrition-files').remove([uploadedDietPdfPath]).catch(() => {});
+        }
+        if(adminRecordSaved){
+          const completion=adminFormMessages[form.id];
+          try{await renderAdmin()}catch(_){}
+          collapseSavedAdminForm(form.id,`${completion?.message||'La información quedó guardada.'} No la envíes otra vez.`);
+          content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="login-error live-notice" role="alert">Los datos sí se guardaron, pero no se pudo completar el aviso o actualizar la vista. No repitas el envío.</p>');
+          return;
         }
         const notice = content.querySelector('.live-notice');
         if (notice) notice.remove();
