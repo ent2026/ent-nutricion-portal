@@ -306,7 +306,7 @@
     const patientDirectory = `<section class="dash-panel admin-section patient-directory-section"><div class="dash-panel-head"><div><h3>Directorio de pacientes</h3><p class="panel-note">Busca, selecciona varios expedientes para dar de baja o abre un paciente para revisar su historial.</p></div><span>${patients.length} EXPEDIENTES</span></div><label class="sr-only" for="admin-patient-search">Buscar paciente por nombre</label><input class="input patient-search" id="admin-patient-search" type="search" placeholder="Buscar por nombre…" autocomplete="off" /><div class="bulk-patient-actions"><label><input type="checkbox" data-select-all-patients aria-label="Seleccionar todos los pacientes"> Seleccionar todos</label><span data-selection-count>0 seleccionados</span><button class="button button-danger" type="button" data-bulk-delete disabled>Dar de baja seleccionados</button></div><div class="patient-directory-list" id="admin-patient-directory">${sortedPatients.length ? sortedPatients.map((row) => `<div class="patient-directory-row"><label class="patient-select"><input type="checkbox" data-select-patient="${escapeHtml(row.user_id)}" data-patient-username="${escapeHtml(row.username||'')}" data-patient-name="${escapeHtml(row.full_name)}" aria-label="Seleccionar a ${escapeHtml(row.full_name)}"></label><button class="patient-directory-item" type="button" data-open-patient="${escapeHtml(row.user_id)}"><span class="patient-directory-avatar">${escapeHtml(String(row.full_name||'P').slice(0,1).toUpperCase())}</span><span class="patient-directory-copy"><strong>${escapeHtml(row.full_name)}</strong><small>${escapeHtml(row.username||'Sin usuario')} · ${escapeHtml(row.age ?? '—')} años · ${escapeHtml(serviceLabel(row.plan_code))} · ${escapeHtml(row.status)}</small></span><span class="patient-directory-arrow">Ver expediente →</span></button></div>`).join('') : '<p class="panel-note">Aún no hay pacientes dados de alta.</p>'}</div></section>`;
     const priceField = (label, name) => `<div><label class="form-label" for="${name}">${label}</label><input class="input" id="${name}" name="${name}" type="number" min="0" step="1" value="${settings[name] ?? ''}" placeholder="MXN" /></div>`;
     showModal(`<div class="dashboard">
-      <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><div class="profile-head admin-profile"><img class="avatar-photo" src="assets/esteban-tellez.jpg" alt="Esteban Téllez" /><div><h2 id="modal-title">Esteban Téllez</h2><p>Administración ENT</p></div></div><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
+      <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><div class="profile-head admin-profile"><img class="avatar-photo" src="assets/esteban-tellez.jpg" alt="Esteban Téllez" /><div><h2 id="modal-title">Esteban Téllez</h2><p>Administración ENT</p></div></div><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><div class="admin-header-actions"><button class="button button-outline" type="button" data-admin-audio-test>Probar sonido</button><button class="button button-outline" data-live-logout>Salir</button></div></div>
       <div class="admin-summary-grid"><div class="admin-summary-alert${activeApplicationAlerts.size ? ' is-alerting' : ''}" data-admin-summary-applications role="status" aria-live="polite"><small>SOLICITUDES</small><strong>${requests.length}</strong><span>${activeApplicationAlerts.size ? 'Nueva solicitud · revisar acceso' : 'En bandeja'}</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
       ${patientDirectory}
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-age">Edad</label><input class="input" id="manual-age" name="age" type="number" min="1" max="120" step="1" required /></div><div><label class="form-label" for="manual-plan">Consulta o paquete</label><select class="select" id="manual-plan" name="plan_code" required><option value="initial">Consulta inicial</option><option value="followup">Consulta de seguimiento</option><option value="bimonthly">Paquete bimestral · 2 consultas</option><option value="quarterly">Paquete trimestral · 3 consultas</option><option value="semester">Paquete semestral · 6 consultas</option><option value="couple">Consulta en pareja · 2 personas</option></select></div><div><label class="form-label" for="manual-password">Contraseña de acceso</label><div class="password-entry"><input class="input" id="manual-password" name="initial_password" type="password" minlength="5" maxlength="15" autocomplete="new-password" required /><button class="button button-outline password-action password-toggle-icon" type="button" data-toggle-password="manual-password" aria-label="Mostrar contraseña" title="Mostrar contraseña">${passwordEyeIcon(false)}</button><button class="button button-outline password-action" type="button" data-copy-from="manual-password">Copiar</button></div></div></div><p class="form-note">Tú defines la contraseña (5 a 15 caracteres). Se establece al crear la cuenta; ENT no la guarda ni podrá consultarla después.</p><button class="button button-dark" type="submit">Crear acceso de paciente</button></form></section>
@@ -478,7 +478,12 @@
     const AudioCtor=window.AudioContext||window.webkitAudioContext;
     if(!AudioCtor)return null;
     try{
-      if(!entAdminAudioContext)entAdminAudioContext=new AudioCtor();
+      if(!entAdminAudioContext){
+        entAdminAudioContext=new AudioCtor();
+        entAdminAudioContext.onstatechange=()=>{
+          if(entAdminAudioContext?.state==='running'&&activeApplicationAlerts.size)playEntAdminApplicationAlert();
+        };
+      }
       if(entAdminAudioContext.state==='suspended')entAdminAudioContext.resume().catch(()=>{});
       return entAdminAudioContext;
     }catch(_){return null}
@@ -490,24 +495,24 @@
   };
   const playEntAdminApplicationAlert=(delay=0)=>{
     const ctx=unlockEntAdminAudio();
-    if(ctx){
-      const play=()=>{
-        const start=ctx.currentTime+Math.max(0,delay);
-        [880,1175,988].forEach((frequency,index)=>{
-          const at=start+index*.19;
-          const oscillator=ctx.createOscillator();
-          const envelope=ctx.createGain();
-          oscillator.type='sine';
-          oscillator.frequency.setValueAtTime(frequency,at);
-          envelope.gain.setValueAtTime(.0001,at);
-          envelope.gain.exponentialRampToValueAtTime(1,at+.018);
-          envelope.gain.exponentialRampToValueAtTime(.0001,at+.16);
-          oscillator.connect(envelope);envelope.connect(ctx.destination);
-          oscillator.start(at);oscillator.stop(at+.17);
-        });
-      };
-      if(ctx.state==='running')play();else ctx.resume().then(play).catch(()=>{});
-    }
+    if(!ctx)return;
+    const play=()=>{
+      if(ctx.state!=='running')return;
+      const start=ctx.currentTime+Math.max(0,delay);
+      [880,1175,988].forEach((frequency,index)=>{
+        const at=start+index*.27;
+        const oscillator=ctx.createOscillator();
+        const envelope=ctx.createGain();
+        oscillator.type='square';
+        oscillator.frequency.setValueAtTime(frequency,at);
+        envelope.gain.setValueAtTime(.0001,at);
+        envelope.gain.exponentialRampToValueAtTime(.85,at+.02);
+        envelope.gain.exponentialRampToValueAtTime(.0001,at+.23);
+        oscillator.connect(envelope);envelope.connect(ctx.destination);
+        oscillator.start(at);oscillator.stop(at+.24);
+      });
+    };
+    if(ctx.state==='running')play();else ctx.resume().then(play).catch(error=>console.warn('ENT alert audio is waiting for a user gesture',error));
   };
   const showEntAdminDesktopNotification=()=>{
     if(document.visibilityState==='visible'||!('Notification'in window)||Notification.permission!=='granted')return;
@@ -540,7 +545,7 @@
     if(!entAdminAlertInterval)entAdminAlertInterval=setInterval(()=>{
       if(!activeApplicationAlerts.size){clearInterval(entAdminAlertInterval);entAdminAlertInterval=null;return}
       playEntAdminApplicationAlert();
-    },4000);
+    },1600);
   };
   const acknowledgeEntAdminApplicationAlert=(applicationId)=>{
     activeApplicationAlerts.delete(applicationId);
@@ -548,7 +553,11 @@
     updateEntAdminAlertAppearance();
   };
   document.addEventListener('pointerdown',()=>{
-    if(requestedView==='admin'&&activeUser){unlockEntAdminAudio();requestEntAdminNotificationPermission()}
+    if(requestedView==='admin'){
+      unlockEntAdminAudio();
+      if(activeUser)requestEntAdminNotificationPermission();
+      if(activeApplicationAlerts.size)playEntAdminApplicationAlert();
+    }
   },{capture:true});
   const readEntApplicationSnapshot=async()=>{
     const {data,error}=await client.from('patient_applications').select('id,created_at,status').order('created_at',{ascending:false}).order('id',{ascending:false}).limit(100);
@@ -584,7 +593,11 @@
     for(const table of tables){
       const ownerColumn=table==='patient_profiles'?'user_id':'patient_id';
       const filter=!isAdmin&&['patient_profiles','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads'].includes(table)?{event:'*',schema:'public',table,filter:ownerColumn+'=eq.'+activeUser.id}:{event:'*',schema:'public',table};
-      ch=ch.on('postgres_changes',filter,()=>{
+      ch=ch.on('postgres_changes',filter,(payload)=>{
+        if(isAdmin&&table==='patient_applications'&&payload?.eventType==='INSERT'&&payload.new?.status==='new'&&payload.new?.id){
+          entAdminSeenApplicationIds.add(payload.new.id);
+          startEntAdminApplicationAlert(payload.new.id);
+        }
         clearTimeout(entRealtimeTimer);
         entRealtimeTimer=setTimeout(async()=>{
           if(!activeUser||content.querySelector('#created-password'))return;
@@ -649,6 +662,21 @@
   };
 
   document.addEventListener('click', async (event) => {
+    const soundTest=event.target.closest('[data-admin-audio-test]');
+    if(soundTest){
+      event.preventDefault();event.stopImmediatePropagation();
+      const ctx=unlockEntAdminAudio();
+      const activate=()=>{
+        if(ctx?.state!=='running')throw new Error('El navegador no habilitó el audio. Toca otra vez para permitirlo.');
+        playEntAdminApplicationAlert();
+        soundTest.textContent='Sonido activo ✓';
+        soundTest.setAttribute('aria-pressed','true');
+      };
+      if(!ctx){soundTest.textContent='Audio no disponible';}
+      else if(ctx.state==='running')activate();
+      else ctx.resume().then(activate).catch(()=>{soundTest.textContent='Toca para activar el sonido';});
+      return;
+    }
     const dietDownload = event.target.closest('[data-download-diet], [data-download-training]');
     if (dietDownload) {
       event.preventDefault(); event.stopImmediatePropagation();
