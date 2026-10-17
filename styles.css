@@ -123,8 +123,8 @@
 
 .diet-pdf-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:18px 0 12px}
 .diet-pdf-actions small{color:var(--muted,#72746d);overflow-wrap:anywhere}
-.diet-pdf-viewer{display:block;width:100%;height:min(78vh,900px);min-height:460px;border:1px solid rgba(35,54,43,.14);border-radius:14px;background:#f6f5f1}
-@media(max-width:640px){.diet-pdf-viewer{height:68vh;min-height:400px}.diet-pdf-actions{align-items:flex-start;flex-direction:column}}
+
+@media(max-width:640px){.diet-pdf-actions{align-items:flex-start;flex-direction:column}}
 
 .consultation-heading{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:end;margin-bottom:30px}
 .consultation-heading h2{font-size:clamp(2.1rem,4vw,3.4rem);line-height:1.04;letter-spacing:-.045em;margin:12px 0 0}
