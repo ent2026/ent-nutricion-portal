@@ -472,19 +472,70 @@
   };
   let entRealtimeChannel=null, entRealtimeTimer=null, entAdminPollTimer=null;
   let entAdminPollBusy=false, entApplicationSignature=null, entVisibilityHandler=null;
-  const readEntApplicationSignature=async()=>{
-    const {data,error}=await client.from('patient_applications').select('id,created_at,status').order('created_at',{ascending:false}).order('id',{ascending:false}).limit(25);
+  let entAdminAudioContext=null, entAdminSessionStartedAt=0, entAdminSeenApplicationIds=new Set();
+  const unlockEntAdminAudio=()=>{
+    const AudioCtor=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtor)return null;
+    try{
+      if(!entAdminAudioContext)entAdminAudioContext=new AudioCtor();
+      if(entAdminAudioContext.state==='suspended')entAdminAudioContext.resume().catch(()=>{});
+      return entAdminAudioContext;
+    }catch(_){return null}
+  };
+  const requestEntAdminNotificationPermission=()=>{
+    if('Notification'in window&&Notification.permission==='default'){
+      try{Notification.requestPermission().catch(()=>{})}catch(_){}
+    }
+  };
+  const playEntAdminApplicationAlert=(delay=0)=>{
+    const ctx=unlockEntAdminAudio();
+    if(ctx){
+      const play=()=>{
+        const start=ctx.currentTime+Math.max(0,delay);
+        [880,1175,988].forEach((frequency,index)=>{
+          const at=start+index*.19;
+          const oscillator=ctx.createOscillator();
+          const envelope=ctx.createGain();
+          oscillator.type='sine';
+          oscillator.frequency.setValueAtTime(frequency,at);
+          envelope.gain.setValueAtTime(.0001,at);
+          envelope.gain.exponentialRampToValueAtTime(1,at+.018);
+          envelope.gain.exponentialRampToValueAtTime(.0001,at+.16);
+          oscillator.connect(envelope);envelope.connect(ctx.destination);
+          oscillator.start(at);oscillator.stop(at+.17);
+        });
+      };
+      if(ctx.state==='running')play();else ctx.resume().then(play).catch(()=>{});
+    }
+    if(document.visibilityState!=='visible'&&'Notification'in window&&Notification.permission==='granted'){
+      try{
+        const notice=new Notification('Nueva solicitud de paciente',{body:'Hay una solicitud nueva para revisar en el administrador ENT.',tag:'ent-solicitud-'+Date.now()});
+        setTimeout(()=>notice.close(),10000);
+      }catch(_){}
+    }
+  };
+  document.addEventListener('pointerdown',()=>{
+    if(requestedView==='admin'&&activeUser){unlockEntAdminAudio();requestEntAdminNotificationPermission()}
+  },{capture:true});
+  const readEntApplicationSnapshot=async()=>{
+    const {data,error}=await client.from('patient_applications').select('id,created_at,status').order('created_at',{ascending:false}).order('id',{ascending:false}).limit(100);
     if(error)throw error;
-    return JSON.stringify((data||[]).map(row=>[row.id,row.created_at,row.status]));
+    return data||[];
   };
   const refreshEntAdminIfChanged=async(force=false)=>{
     if(!activeUser||(requestedView!=='admin'&&activeUser.app_metadata?.role!=='admin')||entAdminPollBusy)return;
     entAdminPollBusy=true;
     try{
-      const signature=await readEntApplicationSignature();
-      if(force||signature!==entApplicationSignature){
-        entApplicationSignature=signature;
+      const rows=await readEntApplicationSnapshot();
+      const signature=JSON.stringify(rows.map(row=>[row.id,row.created_at,row.status]));
+      const newlyArrived=rows.filter(row=>row.status==='new'&&!entAdminSeenApplicationIds.has(row.id)&&Date.parse(row.created_at)>=entAdminSessionStartedAt);
+      rows.forEach(row=>entAdminSeenApplicationIds.add(row.id));
+      const changed=signature!==entApplicationSignature;
+      entApplicationSignature=signature;
+      newlyArrived.forEach((_,index)=>playEntAdminApplicationAlert(index*.65));
+      if(force||changed){
         await renderAdmin();
+        if(newlyArrived.length)content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success live-notice" role="status">Nueva solicitud recibida. El panel se actualizó automáticamente.</p>');
       }
     }catch(err){console.error('ENT admin live refresh failed',err)}
     finally{entAdminPollBusy=false}
@@ -505,11 +556,8 @@
         entRealtimeTimer=setTimeout(async()=>{
           if(!activeUser||content.querySelector('#created-password'))return;
           try{
-            if(activeUser.app_metadata?.role==='admin'){
-              const signature=await readEntApplicationSignature();
-              entApplicationSignature=signature;
-              await renderAdmin();
-            }else await renderPatient(activeTab);
+            if(requestedView==='admin'||activeUser.app_metadata?.role==='admin')await refreshEntAdminIfChanged(true);
+            else await renderPatient(activeTab);
           }catch(err){console.error('ENT realtime refresh failed',err)}
         },180);
       });
@@ -519,9 +567,10 @@
       else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED')console.warn('ENT Realtime status:',status,error||'');
     });
     if(isAdmin){
+      entAdminSeenApplicationIds=new Set();
       entApplicationSignature=null;
       refreshEntAdminIfChanged(true);
-      entAdminPollTimer=setInterval(()=>{if(document.visibilityState==='visible')refreshEntAdminIfChanged(false)},3000);
+      entAdminPollTimer=setInterval(()=>refreshEntAdminIfChanged(false),3000);
       if(entVisibilityHandler)document.removeEventListener('visibilitychange',entVisibilityHandler);
       entVisibilityHandler=()=>{if(document.visibilityState==='visible')refreshEntAdminIfChanged(false)};
       document.addEventListener('visibilitychange',entVisibilityHandler);
@@ -530,6 +579,7 @@
   const enterPortal = async (user) => {
     activeUser = user;
     if (requestedView === 'admin') {
+      entAdminSessionStartedAt=Date.now();
       if (user.app_metadata?.role !== 'admin') {
         if (String(user.email || '').toLowerCase() !== ADMIN_EMAIL) {
           await client.auth.signOut();
@@ -852,6 +902,7 @@
 
   document.addEventListener('submit', async (event) => {
     const form = event.target;
+    if(form.id==='ent-login-form'&&requestedView==='admin'){unlockEntAdminAudio();requestEntAdminNotificationPermission()}
     if (form.id === 'admin-delete-patient-form') {
       event.preventDefault(); event.stopImmediatePropagation();
       const input = form.querySelector('#patient-delete-confirmation');
