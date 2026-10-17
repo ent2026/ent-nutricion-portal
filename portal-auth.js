@@ -1113,5 +1113,28 @@
     if (event.key === 'Escape' && backdrop?.classList.contains('open')) closeModal();
   });
 
-  if (dedicatedView === 'patient' || dedicatedView === 'admin') showLogin(dedicatedView);
+  const restorePortalSession = async (view) => {
+    requestedView=view;
+    if(!client){showLogin(view);return;}
+    showModal(`<div class="dashboard login-wrap session-loading" role="status"><div class="modal-kicker">ACCESO ENT</div><h2 id="modal-title">Restaurando tu sesión</h2><p class="modal-lede">Estamos comprobando tu acceso de forma segura.</p></div>`);
+    try{
+      const {data,error}=await client.auth.getSession();
+      if(error)throw error;
+      const user=data?.session?.user;
+      if(!user){showLogin(view);return;}
+      const userIsAdmin=user.app_metadata?.role==='admin'||String(user.email||'').toLowerCase()===ADMIN_EMAIL;
+      const expectedAdmin=view==='admin';
+      if(userIsAdmin!==expectedAdmin){
+        showLogin(view);
+        setLoginError(`Ya hay una sesión de ${userIsAdmin?'administración':'paciente'} activa en este navegador. Cierra esa sesión antes de cambiar de acceso.`);
+        return;
+      }
+      await enterPortal(user);
+    }catch(error){
+      showLogin(view);
+      setLoginError('No se pudo recuperar la sesión. Revisa tu conexión e intenta de nuevo; no guardamos tu contraseña en el navegador.');
+      console.error('ENT session restore failed',error);
+    }
+  };
+  if (dedicatedView === 'patient' || dedicatedView === 'admin') restorePortalSession(dedicatedView);
 })();
