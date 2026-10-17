@@ -10,7 +10,42 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 const cleanString = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 const normalizeUsername = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
-const serviceMonths: Record<string, number> = { initial: 1, followup: 1, bimonthly: 2, quarterly: 3, semester: 6, couple: 1 };
+const serviceMonths: Record<string, number> = { initial: 1, followup: 1, bimonthly: 2, quarterly: 3, semester: 6, couple: 1 };\ntype WhatsAppStatus = { sent: boolean; error?: string };
+const normalizeWhatsAppPhone = (value: string) => {
+  let phone = value.replace(/\D/g, '');
+  if (phone.length === 10) phone = '52' + phone;
+  if (phone.startsWith('00')) phone = phone.slice(2);
+  return phone;
+};
+async function sendWhatsAppTemplate(toValue: string, templateName: string, values: string[]): Promise<WhatsAppStatus> {
+  const token = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
+  const graphVersion = Deno.env.get('WHATSAPP_GRAPH_API_VERSION');
+  if (!token || !phoneNumberId || !graphVersion || !templateName) return { sent: false, error: 'not_configured' };
+  const to = normalizeWhatsAppPhone(toValue);
+  if (!/^\d{10,15}$/.test(to)) return { sent: false, error: 'invalid_phone' };
+  try {
+    const response = await fetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: 'es_MX' },
+          components: [{ type: 'body', parameters: values.map((text) => ({ type: 'text', text })) }],
+        },
+      }),
+    });
+    if (!response.ok) return { sent: false, error: 'provider_error' };
+    return { sent: true };
+  } catch {
+    return { sent: false, error: 'network_error' };
+  }
+}
+
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -34,27 +69,41 @@ Deno.serve(async (request) => {
   let fullName = cleanString(input.full_name, 160);
   let username = normalizeUsername(cleanString(input.username, 40));
   let phone = cleanString(input.phone, 40);
+  let age = Number(input.age);
+  let scheduledAt = '';
+  let appointmentType = '';
+  let locationOrLink = '';
   let planCode = cleanString(input.plan_code, 20);
   let planMonths = serviceMonths[planCode] || 0;
-  let applicationId = cleanString(input.application_id, 50);
+  let applicationId = cleanString(input.application_id, 50);\n  let hasWhatsappConsent = false;
   const password = typeof input.initial_password === 'string' ? input.initial_password : '';
 
   if (applicationId) {
     const { data: application, error } = await service.from('patient_applications')
-      .select('id,full_name,username,phone,plan_code,plan_months,status')
+      .select('id,full_name,username,phone,age,plan_code,plan_months,status,whatsapp_consent_at')
       .eq('id', applicationId).maybeSingle();
     if (error || !application || application.status !== 'new') return json({ error: 'La solicitud ya se procesó o no existe.' }, 409);
-    fullName = application.full_name;
+    hasWhatsappConsent = Boolean(application.whatsapp_consent_at);\n    fullName = application.full_name;
     username = normalizeUsername(application.username || fullName.replace(/\s+/g, '.'));
     phone = application.phone;
+    age = Number(application.age);
+    scheduledAt = cleanString(input.scheduled_at, 80);
+    appointmentType = cleanString(input.appointment_type, 20);
+    locationOrLink = cleanString(input.location_or_link, 500);
     planCode = application.plan_code;
     planMonths = serviceMonths[planCode] || 0;
   }
 
-  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !Object.hasOwn(serviceMonths, planCode) || planMonths !== serviceMonths[planCode] || password.length < 12 || password.length > 72) {
-    return json({ error: 'Revisa nombre, usuario, teléfono, membresía y contraseña (12 a 72 caracteres).' }, 400);
+  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !Number.isInteger(age) || age < 1 || age > 120 || !Object.hasOwn(serviceMonths, planCode) || planMonths !== serviceMonths[planCode] || password.length < 12 || password.length > 72) {
+    return json({ error: 'Revisa nombre, edad, usuario, teléfono, membresía y contraseña (12 a 72 caracteres).' }, 400);
   }
 
+  if (applicationId) {
+    const appointmentDate = new Date(scheduledAt);
+    if (!scheduledAt || Number.isNaN(appointmentDate.getTime()) || appointmentDate.getTime() <= Date.now() || !['in_person','online'].includes(appointmentType) || locationOrLink.length < 3) {
+      return json({ error: 'Para aprobar la solicitud debes asignar una fecha futura, modalidad y dirección o enlace de consulta.' }, 400);
+    }
+  }
   const requestedUsername = username;
   for (let suffix = 2; suffix < 100; suffix += 1) {
     const { data: existing, error } = await service.from('patient_profiles').select('user_id').eq('username', username).maybeSingle();
@@ -75,21 +124,48 @@ Deno.serve(async (request) => {
   if (createError || !created.user) return json({ error: 'No se pudo crear la cuenta. El usuario podría estar ocupado; intenta con otra variante.' }, 409);
 
   const { error: profileError } = await service.from('patient_profiles').insert({
-    user_id: created.user.id, full_name: fullName, username, phone, plan_code: planCode,
-    plan_months: planMonths, status: 'pending',
+    user_id: created.user.id, full_name: fullName, username, phone, age, plan_code: planCode,
+    plan_months: planMonths, status: applicationId ? 'active' : 'pending',
   });
   if (profileError) {
     await service.auth.admin.deleteUser(created.user.id);
     return json({ error: 'No se pudo crear el expediente. La cuenta temporal se eliminó.' }, 500);
   }
+  let appointmentId: string | null = null;
   if (applicationId) {
+    const { data: appointment, error: appointmentError } = await service.from('appointments').insert({
+      patient_id: created.user.id, scheduled_at: new Date(scheduledAt).toISOString(), appointment_type: appointmentType,
+      location_or_link: locationOrLink, status: 'scheduled', created_by: caller.user.id,
+    }).select('id').single();
+    if (appointmentError || !appointment) {
+      await service.from('patient_profiles').delete().eq('user_id', created.user.id);
+      await service.auth.admin.deleteUser(created.user.id);
+      return json({ error: 'No se pudo guardar la cita. No se creó el acceso; revisa la fecha e inténtalo de nuevo.' }, 500);
+    }
+    appointmentId = appointment.id;
     const { error } = await service.from('patient_applications').update({ status: 'accepted' }).eq('id', applicationId);
     if (error) {
+      if (appointmentId) await service.from('appointments').delete().eq('id', appointmentId);
       await service.from('patient_profiles').delete().eq('user_id', created.user.id);
       await service.auth.admin.deleteUser(created.user.id);
       return json({ error: 'No se pudo actualizar la solicitud. El alta se revirtió.' }, 500);
     }
   }
-
-  return json({ username, initial_password: password, full_name: fullName, phone });
+  let whatsappStatus: WhatsAppStatus = { sent: false, error: applicationId ? (hasWhatsappConsent ? 'not_configured' : 'consent_missing') : 'no_application' };
+  if (applicationId && hasWhatsappConsent) {
+    const scheduledLabel = scheduledAt
+      ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Mexico_City' }).format(new Date(scheduledAt))
+      : 'Pendiente de agenda';
+    whatsappStatus = await sendWhatsAppTemplate(
+      phone,
+      Deno.env.get('WHATSAPP_TEMPLATE_PATIENT_ACCESS') || '',
+      [fullName, username, password, scheduledLabel, appointmentType === 'online' ? 'En línea' : 'Presencial', locationOrLink, 'https://ent2026.github.io/ent-nutricion-portal/paciente.html'],
+    );
+  }
+  return json({
+    username, initial_password: password, full_name: fullName, phone, age,
+    scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+    appointment_type: appointmentType || null, location_or_link: locationOrLink || null,
+    whatsapp_status: whatsappStatus,
+  });
 });
