@@ -116,7 +116,7 @@
       inner = data?.length ? data.map((item) => {
         const available = Boolean(item.diet_pdf_path) && !item.diet_pdf_downloaded_at;
         const dietText = item.diet_content && item.diet_content !== 'Consulta el PDF adjunto de tu dieta.' ? `<div class="live-plan-text">${escapeHtml(item.diet_content)}</div>` : '';
-        const pdfAction = available ? `<div class="diet-pdf-actions"><button class="button button-dark" type="button" data-download-diet="${escapeHtml(item.id)}" data-file-name="${escapeHtml(item.diet_pdf_name || 'Dieta ENT.pdf')}">Descargar dieta ↓</button><small>${escapeHtml(item.diet_pdf_name || 'Documento PDF')} · se elimina del almacenamiento al descargar</small></div>` : item.diet_pdf_downloaded_at || !item.diet_pdf_path ? '<p class="panel-note">El archivo se retiró del almacenamiento después de descargarse. Si necesitas otra copia, solicítala a ENT.</p>' : '';
+        const pdfAction = available ? `<div class="diet-pdf-actions"><button class="button button-dark" type="button" data-download-diet="${escapeHtml(item.id)}" data-file-name="${escapeHtml(item.diet_pdf_name || 'Dieta ENT.pdf')}">Descargar archivo PDF ↓</button><small>${escapeHtml(item.diet_pdf_name || 'Documento PDF')} · se elimina del almacenamiento al descargar</small></div>` : item.diet_pdf_downloaded_at || !item.diet_pdf_path ? '<p class="panel-note">El archivo se retiró del almacenamiento después de descargarse. Si necesitas otra copia, solicítala a ENT.</p>' : '';
         return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${pdfAction}${dietText}${item.recommendations ? `<div class="panel-note">${escapeHtml(item.recommendations)}</div>` : ''}</section>`;
       }).join('') : '<section class="dash-panel dash-content-wide"><h3>Aún no hay una dieta publicada</h3><p class="panel-note">La actualización aparecerá aquí cuando tu nutriólogo la publique.</p></section>';
     } else if (tab === 'entrenamiento') {
@@ -128,7 +128,7 @@
       if (error) throw error;
       inner = data?.length ? data.map((item) => {
         let videoLink = '';
-        try { const url = new URL(item.video_url); if (url.protocol === 'https:' && ['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(url.hostname)) videoLink = url.href; } catch (_) {}
+        try { const url = new URL(item.video_url); if (url.protocol === 'https:' && ['youtube.com','www.youtube.com','youtu.be'].includes(url.hostname)) videoLink = url.href; } catch (_) {}
         return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${item.plan_content ? `<p class="panel-note">${escapeHtml(item.plan_content)}</p>` : ''}${videoLink ? `<a class="button button-dark" href="${escapeHtml(videoLink)}" target="_blank" rel="noopener noreferrer">Abrir clase en YouTube ↗</a>` : '<p class="panel-note">El enlace de esta clase no está disponible.</p>'}</section>`;
       }).join('') : '<section class="dash-panel dash-content-wide"><h3>Tus clases aparecerán aquí</h3><p class="panel-note">Cuando ENT te asigne una clase de entrenamiento, podrás abrir el video desde este apartado.</p></section>';
     } else if (tab === 'lifestyle') {
@@ -731,7 +731,7 @@
       } else if (form.id === 'admin-class-form') {
         let videoUrl;
         try { videoUrl = new URL(values.video_url.trim()); } catch (_) { throw new Error('Escribe un enlace válido de YouTube.'); }
-        if (videoUrl.protocol !== 'https:' || !['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(videoUrl.hostname)) throw new Error('Usa un enlace seguro de youtube.com o youtu.be.');
+        if (videoUrl.protocol !== 'https:' || !['youtube.com','www.youtube.com','youtu.be'].includes(videoUrl.hostname)) throw new Error('Usa un enlace seguro de youtube.com o youtu.be.');
         table = 'training_plans';
         record = { patient_id: values.patient_id, title: values.title.trim(), plan_content: values.plan_content.trim(), video_url: videoUrl.href, content_type: 'class', is_published: true, published_at: new Date().toISOString(), created_by: activeUser.id };
       } else if (form.id === 'admin-lifestyle-form') {
