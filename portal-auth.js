@@ -470,25 +470,62 @@
     if (refreshError || !refreshed?.session?.user) throw new Error('Se habilitó la cuenta, pero no se pudo actualizar la sesión. Inicia sesión de nuevo.');
     return refreshed.session.user;
   };
-  let entRealtimeChannel=null, entRealtimeTimer=null;
+  let entRealtimeChannel=null, entRealtimeTimer=null, entAdminPollTimer=null;
+  let entAdminPollBusy=false, entApplicationSignature=null, entVisibilityHandler=null;
+  const readEntApplicationSignature=async()=>{
+    const {data,error}=await client.from('patient_applications').select('id,created_at,status').order('created_at',{ascending:false}).order('id',{ascending:false}).limit(25);
+    if(error)throw error;
+    return JSON.stringify((data||[]).map(row=>[row.id,row.created_at,row.status]));
+  };
+  const refreshEntAdminIfChanged=async(force=false)=>{
+    if(!activeUser||activeUser.app_metadata?.role!=='admin'||entAdminPollBusy)return;
+    entAdminPollBusy=true;
+    try{
+      const signature=await readEntApplicationSignature();
+      if(force||signature!==entApplicationSignature){
+        entApplicationSignature=signature;
+        await renderAdmin();
+      }
+    }catch(err){console.error('ENT admin live refresh failed',err)}
+    finally{entAdminPollBusy=false}
+  };
   const startEntRealtime=()=>{
     if(!client||!activeUser)return;
     if(entRealtimeChannel)client.removeChannel(entRealtimeChannel);
-    const role=activeUser.app_metadata?.role;
+    clearTimeout(entRealtimeTimer);
+    clearInterval(entAdminPollTimer);
+    const isAdmin=activeUser.app_metadata?.role==='admin';
     const tables=['patient_profiles','patient_applications','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads','site_configuration','lifestyle_library','faq_visual'];
     let ch=client.channel('ent-live-'+activeUser.id);
     for(const table of tables){
       const ownerColumn=table==='patient_profiles'?'user_id':'patient_id';
-      const filter=role==='patient'&&['patient_profiles','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads'].includes(table)?{event:'*',schema:'public',table,filter:ownerColumn+'=eq.'+activeUser.id}:{event:'*',schema:'public',table};
+      const filter=!isAdmin&&['patient_profiles','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads'].includes(table)?{event:'*',schema:'public',table,filter:ownerColumn+'=eq.'+activeUser.id}:{event:'*',schema:'public',table};
       ch=ch.on('postgres_changes',filter,()=>{
         clearTimeout(entRealtimeTimer);
         entRealtimeTimer=setTimeout(async()=>{
           if(!activeUser||content.querySelector('#created-password'))return;
-          try{if(activeUser.app_metadata?.role==='admin')await renderAdmin();else await renderPatient(activeTab)}catch(err){console.error('ENT realtime refresh failed',err)}
+          try{
+            if(activeUser.app_metadata?.role==='admin'){
+              const signature=await readEntApplicationSignature();
+              entApplicationSignature=signature;
+              await renderAdmin();
+            }else await renderPatient(activeTab);
+          }catch(err){console.error('ENT realtime refresh failed',err)}
         },180);
       });
     }
-    entRealtimeChannel=ch.subscribe();
+    entRealtimeChannel=ch.subscribe((status,error)=>{
+      if(status==='SUBSCRIBED')console.info('ENT Realtime connected');
+      else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED')console.warn('ENT Realtime status:',status,error||'');
+    });
+    if(isAdmin){
+      entApplicationSignature=null;
+      refreshEntAdminIfChanged(true);
+      entAdminPollTimer=setInterval(()=>{if(document.visibilityState==='visible')refreshEntAdminIfChanged(false)},8000);
+      if(entVisibilityHandler)document.removeEventListener('visibilitychange',entVisibilityHandler);
+      entVisibilityHandler=()=>{if(document.visibilityState==='visible')refreshEntAdminIfChanged(false)};
+      document.addEventListener('visibilitychange',entVisibilityHandler);
+    }
   };
   const enterPortal = async (user) => {
     activeUser = user;
