@@ -60,8 +60,8 @@ Deno.serve(async (request) => {
     planMonths = serviceMonths[planCode] || 0;
   }
 
-  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !Number.isInteger(age) || age < 1 || age > 120 || !Object.hasOwn(serviceMonths, planCode) || planMonths !== serviceMonths[planCode] || password.length < 12 || password.length > 72) {
-    return json({ error: 'Revisa nombre, edad, usuario, teléfono, membresía y contraseña (12 a 72 caracteres).' }, 400);
+  if (fullName.length < 2 || username.length < 3 || !/^[a-z0-9._-]+$/.test(username) || phone.length < 7 || !Number.isInteger(age) || age < 1 || age > 120 || !Object.hasOwn(serviceMonths, planCode) || planMonths !== serviceMonths[planCode] || password.length < 5 || password.length > 15) {
+    return json({ error: 'Revisa nombre, edad, usuario, teléfono, membresía y contraseña (5 a 15 caracteres).' }, 400);
   }
 
   if (applicationId) {
