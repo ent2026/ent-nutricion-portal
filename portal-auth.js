@@ -61,7 +61,7 @@
       <form id="ent-login-form" novalidate>
         <div class="form-grid login-grid">
           ${admin ? `<div><label class="form-label" for="ent-login-email">Correo de administración</label><input class="input" id="ent-login-email" name="email" type="email" value="${ADMIN_EMAIL}" autocomplete="username" readonly required /></div>` : '<div><label class="form-label" for="ent-login-username">Usuario</label><input class="input" id="ent-login-username" name="username" type="text" autocomplete="username" minlength="3" maxlength="40" required /></div>'}
-          <div><label class="form-label" for="ent-login-password">Contraseña</label><input class="input" id="ent-login-password" name="password" type="password" autocomplete="current-password" required /></div>
+          <div><label class="form-label" for="ent-login-password">Contraseña</label><input class="input" id="ent-login-password" name="password" type="password" autocomplete="current-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="ent-login-password">Ver</button></div>
         </div>
         <p class="login-error" id="ent-login-error" role="alert" hidden></p>
         <button class="button button-dark form-submit" id="ent-login-submit" type="submit">Ingresar <span>→</span></button>
@@ -85,10 +85,10 @@
     <p class="form-note">Después vuelve aquí e inicia sesión con el correo y la contraseña que acabas de crear. ENT asignará el rol de administrador al primer acceso.</p>
     <button class="button button-outline form-submit" type="button" data-admin-login>Volver al inicio de sesión</button>
   </div>`);
-  const showFirstPasswordForm = () => showModal(`<div class="dashboard login-wrap"><div class="modal-kicker">ACTIVA TU ACCESO</div><h2 id="modal-title">Crea una contraseña personal</h2><p class="modal-lede">Por seguridad, reemplaza tu clave temporal antes de entrar a tu perfil.</p><form id="ent-first-password-form"><label class="form-label" for="new-patient-password">Nueva contraseña</label><input class="input" id="new-patient-password" name="password" type="password" autocomplete="new-password" minlength="12" required /><label class="form-label" for="confirm-patient-password">Confirma la contraseña</label><input class="input" id="confirm-patient-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required /><p class="login-error" id="ent-login-error" role="alert" hidden></p><button class="button button-dark form-submit" type="submit">Guardar y continuar →</button></form></div>`);
+  const showFirstPasswordForm = () => showModal(`<div class="dashboard login-wrap"><div class="modal-kicker">ACTIVA TU ACCESO</div><h2 id="modal-title">Crea una contraseña personal</h2><p class="modal-lede">Por seguridad, reemplaza tu clave temporal antes de entrar a tu perfil.</p><form id="ent-first-password-form"><label class="form-label" for="new-patient-password">Nueva contraseña</label><input class="input" id="new-patient-password" name="password" type="password" autocomplete="new-password" minlength="5" maxlength="15" required /><label class="form-label" for="confirm-patient-password">Confirma la contraseña</label><input class="input" id="confirm-patient-password" name="confirm_password" type="password" autocomplete="new-password" minlength="5" maxlength="15" required /><p class="login-error" id="ent-login-error" role="alert" hidden></p><button class="button button-dark form-submit" type="submit">Guardar y continuar →</button></form></div>`);
   const metric = (label, value, unit) => `<div class="metric"><small>${label}</small><strong>${value ?? '—'} <i>${unit}</i></strong></div>`;
-  const patientTabs = ['resumen', 'mediciones', 'dieta', 'entrenamiento', 'clases', 'citas', 'lifestyle', 'avisos'];
-  const tabTitle = { resumen: 'Resumen', mediciones: 'Mediciones', dieta: 'Mi dieta', entrenamiento: 'Entrenamiento', clases: 'Clases', citas: 'Consultas', lifestyle: 'Lifestyle', avisos: 'Avisos' };
+  const patientTabs = ['resumen','mediciones','antropometria','dieta','entrenamiento','citas','faq','lifestyle','avisos'];
+  const tabTitle = { resumen:'Resumen', mediciones:'Mediciones', antropometria:'Antropometría', dieta:'Mi dieta', entrenamiento:'Entrenamiento', citas:'Consultas', faq:'Preguntas frecuentes', lifestyle:'Lifestyle', avisos:'Avisos' };
 
   const patientView = async (tab = activeTab) => {
     activeTab = tab;
@@ -100,13 +100,13 @@
       if (error) throw error;
       const latest = data?.[0];
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${tab === 'resumen' ? 'Última valoración' : 'Mediciones y evolución'}</h3><span>${latest ? escapeHtml(dateLabel(latest.measured_on)) : 'SIN VALORACIONES'}</span></div>
-        <div class="metric-grid">${metric('PESO', latest?.weight_kg, 'kg')}${metric('GRASA CORPORAL', latest?.body_fat_pct, '%')}${metric('MASA MUSCULAR', latest?.muscle_mass_kg, 'kg')}${metric('IMC', latest?.weight_kg && latest?.height_cm ? (Number(latest.weight_kg)/(Number(latest.height_cm)/100)**2).toFixed(1) : null, '')}${metric('ÍNDICE VISCERAL', latest?.visceral_fat_index, '')}</div>
+        <div class="metric-grid">${metric('PESO', latest?.weight_kg, 'kg')}${metric('GRASA CORPORAL', latest?.body_fat_pct, '%')}${metric('MASA MUSCULAR', latest?.muscle_mass_kg, 'kg')}${metric('IMC', latest?.weight_kg && latest?.height_cm ? (Number(latest.weight_kg)/(Number(latest.height_cm)/100)**2).toFixed(1) : null, '')}${metric('CINTURA', latest?.waist_cm, 'cm')}</div>
         ${data?.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>FECHA</th><th>PESO</th><th>ESTATURA</th><th>IMC</th><th>GRASA</th><th>MÚSCULO</th><th>CINTURA</th><th>CADERA</th></tr></thead><tbody>${data.map((row) => `<tr><td>${escapeHtml(dateLabel(row.measured_on))}</td><td>${row.weight_kg ?? '—'} kg</td><td>${row.height_cm ?? '—'} cm</td><td>${row.weight_kg && row.height_cm ? (Number(row.weight_kg)/(Number(row.height_cm)/100)**2).toFixed(1) : '—'}</td><td>${row.body_fat_pct ?? '—'} %</td><td>${row.muscle_mass_kg ?? '—'} kg</td><td>${row.waist_cm ?? '—'} cm</td><td>${row.hip_cm ?? '—'} cm</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">Tu nutriólogo todavía no publica mediciones.</p>'}
       </section>`;
       if (tab === 'resumen') {
         const { data: diet, error: dietError } = await client.from('nutrition_updates').select('id,title,published_at,created_at').eq('patient_id', userId).eq('is_published', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
         if (dietError) throw dietError;
-        const { data: appointment, error: appointmentError } = await client.from('appointments').select('scheduled_at,status,appointment_type,location_or_link').eq('patient_id', userId).in('status', ['scheduled', 'confirmed']).order('scheduled_at', { ascending: true }).limit(1).maybeSingle();
+        const { data: appointment, error: appointmentError } = await client.from('appointments').select('scheduled_at,status,appointment_type,location_or_link').eq('patient_id', userId).in('status', ['scheduled', 'confirmed','reschedule_requested']).order('scheduled_at', { ascending: true }).limit(1).maybeSingle();
         if (appointmentError) throw appointmentError;
         inner += `<section class="dash-panel"><div class="dash-panel-head"><h3>Seguimiento actual</h3><span>${escapeHtml(serviceLabel(activeProfile.plan_code)).toUpperCase()}</span></div><div class="meal"><span class="meal-time">DIETA</span><div><b>${diet ? escapeHtml(diet.title) : 'Sin actualización publicada'}</b><small>${diet ? `Disponible desde ${escapeHtml(dateLabel(diet.published_at || diet.created_at))}` : 'Tu nutriólogo te avisará cuando esté lista.'}</small></div></div><div class="nutrition-summary">Próxima consulta <b>${appointment ? escapeHtml(dateTimeLabel(appointment.scheduled_at)) : 'Por confirmar'}</b>${appointment ? `<small>${appointment.appointment_type === 'online' ? 'En línea' : 'Presencial'} · ${escapeHtml(appointment.location_or_link || 'Lugar por confirmar')}</small>` : ''}</div></section>`;
       }
@@ -122,15 +122,21 @@
     } else if (tab === 'entrenamiento') {
       const { data, error } = await client.from('training_plans').select('*').eq('patient_id', userId).eq('content_type', 'plan').eq('is_published', true).order('created_at', { ascending: false });
       if (error) throw error;
-      inner = data?.length ? data.map((item) => `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div><div class="live-plan-text">${escapeHtml(item.plan_content)}</div></section>`).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Tu nutriólogo publicará aquí una rutina personalizada cuando forme parte de tu seguimiento.</p></section>';
-    } else if (tab === 'clases') {
-      const { data, error } = await client.from('training_plans').select('title,plan_content,video_url,published_at,created_at').eq('patient_id', userId).eq('content_type', 'class').eq('is_published', true).order('created_at', { ascending: false });
-      if (error) throw error;
-      inner = data?.length ? data.map((item) => {
-        let videoLink = '';
-        try { const url = new URL(item.video_url); if (url.protocol === 'https:' && ['youtube.com','www.youtube.com','youtu.be'].includes(url.hostname)) videoLink = url.href; } catch (_) {}
-        return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${item.plan_content ? `<p class="panel-note">${escapeHtml(item.plan_content)}</p>` : ''}${videoLink ? `<a class="button button-dark" href="${escapeHtml(videoLink)}" target="_blank" rel="noopener noreferrer">Abrir clase en YouTube ↗</a>` : '<p class="panel-note">El enlace de esta clase no está disponible.</p>'}</section>`;
-      }).join('') : '<section class="dash-panel dash-content-wide"><h3>Tus clases aparecerán aquí</h3><p class="panel-note">Cuando ENT te asigne una clase de entrenamiento, podrás abrir el video desde este apartado.</p></section>';
+      inner = data?.length ? data.map((item) => `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div><div class="diet-pdf-actions"><button class="button button-dark" data-download-training="${escapeHtml(item.id)}" data-file-name="${escapeHtml(item.training_pdf_name||'Entrenamiento ENT.pdf')}">Descargar PDF ↓</button><small>El PDF se borra del almacenamiento al descargarlo.</small></div>${item.plan_content?`<div class="live-plan-text">${escapeHtml(item.plan_content)}</div>`:''}</section>`).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Tu nutriólogo publicará aquí una rutina personalizada cuando forme parte de tu seguimiento.</p></section>';
+    } else if (tab === 'antropometria') {
+      const { data, error } = await client.from('body_measurements').select('*').eq('patient_id',userId).order('measured_on',{ascending:false}).limit(24);
+      if(error)throw error;
+      const fields=[['triceps_skinfold_mm','Pliegue tricipital','mm'],['biceps_skinfold_mm','Pliegue bicipital','mm'],['subscapular_skinfold_mm','Pliegue subescapular','mm'],['suprailiac_skinfold_mm','Pliegue suprailiaco','mm'],['supraspinale_skinfold_mm','Pliegue supraespinal','mm'],['abdominal_skinfold_mm','Pliegue abdominal','mm'],['thigh_skinfold_mm','Pliegue muslo','mm'],['medial_calf_skinfold_mm','Pliegue pantorrilla medial','mm'],['arm_relaxed_cm','Circunferencia brazo relajado','cm'],['arm_flexed_cm','Circunferencia brazo contracción','cm'],['forearm_cm','Circunferencia antebrazo','cm'],['wrist_cm','Circunferencia muñeca','cm'],['waist_cm','Circunferencia cintura','cm'],['hip_cm','Circunferencia cadera','cm'],['thigh_cm','Circunferencia muslo','cm'],['calf_cm','Circunferencia pantorrilla','cm'],['humerus_breadth_cm','Diámetro húmero','cm'],['wrist_bistyloid_breadth_cm','Diámetro biestiloideo muñeca','cm'],['femur_breadth_cm','Diámetro fémur','cm']];
+      inner=`<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Antropometría</h3><span>${data?.[0]?escapeHtml(dateLabel(data[0].measured_on)):'SIN VALORACIONES'}</span></div>${data?.length?data.map(row=>`<h4>${escapeHtml(dateLabel(row.measured_on))}</h4><div class="metric-grid">${fields.map(([key,label,unit])=>metric(label,row[key],unit)).join('')}</div>`).join(''):'<p class="panel-note">Tu nutriólogo todavía no publica mediciones antropométricas.</p>'}</section>`;
+    } else if (tab === 'faq') {
+      const {data,error}=await client.from('faq_visual').select('image_path,image_name,updated_at').eq('id',1).maybeSingle();
+      if(error)throw error;
+      let url=''; if(data?.image_path){const result=client.storage.from('ent-faq-images').getPublicUrl(data.image_path);url=result.data?.publicUrl||'';}
+      inner=`<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Preguntas frecuentes</h3><span>GUÍA ENT</span></div>${url?`<img class="faq-visual" src="${escapeHtml(url)}" alt="Preguntas frecuentes ENT">`:'<p class="panel-note">ENT publicará aquí su guía de preguntas frecuentes.</p>'}</section>`;
+    } else if (tab === 'lifestyle') {
+      const { data, error } = await client.from('lifestyle_library').select('id,title,youtube_url,created_at').order('created_at',{ascending:false});
+      if(error)throw error;
+      inner=`<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Lifestyle</h3><span>PARA PACIENTES ACTIVOS</span></div>${data?.length?data.map(item=>{let safe='';try{const u=new URL(item.youtube_url);if(u.protocol==='https:'&&['youtube.com','www.youtube.com','youtu.be'].includes(u.hostname))safe=u.href}catch(_){}return `<article class="patient-record-item"><h4>${escapeHtml(item.title)}</h4>${safe?`<a class="button button-outline" href="${escapeHtml(safe)}" target="_blank" rel="noopener">Ver contenido en YouTube ↗</a>`:''}</article>`}).join(''):'<p class="panel-note">El contenido Lifestyle aparecerá aquí.</p>'}</section>`;
     } else if (tab === 'lifestyle') {
       const { data, error } = await client.from('patient_notifications').select('title,message,created_at').eq('patient_id', userId).eq('category', 'lifestyle').order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
@@ -140,13 +146,17 @@
       if (error) throw error;
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Mis consultas</h3><span>HISTORIAL</span></div>${data?.length ? data.map((item) => `<div class="hist-row"><span><b>${escapeHtml(dateTimeLabel(item.scheduled_at))}</b><br><small>${item.appointment_type === 'online' ? 'En línea' : 'Presencial'} · ${escapeHtml(item.status)}</small></span><small>${escapeHtml(item.location_or_link || 'Lugar por confirmar')}</small></div>`).join('') : '<p class="panel-note">Aún no hay consultas registradas.</p>'}</section>`;
     } else if (tab === 'avisos') {
+      const {data:globalConfig,error:globalError}=await client.from('site_configuration').select('announcement_title,announcement_body,announcement_active,announcement_starts_at,announcement_ends_at').eq('id',1).maybeSingle();if(globalError)throw globalError;
+      const now=new Date();const showAnnouncement=globalConfig?.announcement_active&&(!globalConfig.announcement_starts_at||new Date(globalConfig.announcement_starts_at)<=now)&&(!globalConfig.announcement_ends_at||new Date(globalConfig.announcement_ends_at)>=now);
+      const {data:appointments,error:appointmentError}=await client.from('appointments').select('id,scheduled_at,status,appointment_type,location_or_link').eq('patient_id',userId).in('status',['scheduled','confirmed','reschedule_requested']).gte('scheduled_at',new Date().toISOString()).order('scheduled_at',{ascending:true}).limit(5);
+      if(appointmentError)throw appointmentError;
       const [{ data: notices, error }, { data: reads, error: readsError }] = await Promise.all([
         client.from('patient_notifications').select('id,category,title,message,created_at').eq('patient_id', userId).neq('category', 'lifestyle').order('created_at', { ascending: false }).limit(50),
         client.from('patient_notification_reads').select('notification_id').eq('patient_id', userId)
       ]);
       if (error) throw error;if(readsError)throw readsError;
       const seen = new Set((reads || []).map((row) => row.notification_id));
-      inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Notificaciones de tu perfil</h3><span>${(notices||[]).filter(row=>!seen.has(row.id)).length} NUEVAS</span></div>${notices?.length ? notices.map((item) => `<article class="notice-row ${seen.has(item.id)?'is-read':'is-unread'}"><span class="notice-dot"></span><div><small>${escapeHtml(dateTimeLabel(item.created_at))} · ${escapeHtml(item.category)}</small><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p>${seen.has(item.id)?'':'<button class="text-link" data-mark-read="'+escapeHtml(item.id)+'">Marcar como leída</button>'}</div></article>`).join('') : '<p class="panel-note">Aquí aparecerán los avisos de tu plan, mediciones y consultas.</p>'}</section>`;
+      inner = `${showAnnouncement?`<section class="dash-panel dash-content-wide global-announcement"><div class="dash-panel-head"><h3>${escapeHtml(globalConfig.announcement_title||'Aviso de ENT')}</h3><span>AVISO GENERAL</span></div><p>${escapeHtml(globalConfig.announcement_body||'')}</p></section>`:''}<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Notificaciones de tu perfil</h3><span>${(notices||[]).filter(row=>!seen.has(row.id)).length} NUEVAS</span></div>${appointments?.map(a=>`<article class="notice-row is-unread"><span class="notice-dot"></span><div><small>RECORDATORIO DE CONSULTA</small><h4>Hola ${escapeHtml(activeProfile.full_name.split(' ')[0])}, reservamos este espacio para ti</h4><p>Tu consulta es el ${escapeHtml(dateTimeLabel(a.scheduled_at))}. Confirma o solicita reagenda con al menos 48 horas. Si ya falta menos tiempo, revisa las políticas del consultorio antes de pedir cambios.</p>${a.status==='scheduled'?'<button class="button button-dark" data-appointment-response="confirmed" data-appointment-id="'+escapeHtml(a.id)+'">Confirmar cita</button> <button class="button button-outline" data-appointment-response="reschedule_requested" data-appointment-id="'+escapeHtml(a.id)+'">Solicitar reagenda</button>':a.status==='confirmed'?'<b>✓ Cita confirmada</b>':'<b>Solicitud de reagenda recibida</b>'}</div></article>`).join('')||''}${notices?.length ? notices.map((item) => `<article class="notice-row ${seen.has(item.id)?'is-read':'is-unread'}"><span class="notice-dot"></span><div><small>${escapeHtml(dateTimeLabel(item.created_at))} · ${escapeHtml(item.category)}</small><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p>${seen.has(item.id)?'':'<button class="text-link" data-mark-read="'+escapeHtml(item.id)+'">Marcar como leída</button>'}</div></article>`).join('') : '<p class="panel-note">Aquí aparecerán los avisos de tu plan, mediciones y consultas.</p>'}</section>`;
     }
     content.querySelector('#patient-live-content').innerHTML = inner;
   };
@@ -271,7 +281,7 @@
       <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><div class="profile-head admin-profile"><img class="avatar-photo" src="assets/esteban-tellez.jpg" alt="Esteban Téllez" /><div><h2 id="modal-title">Esteban Téllez</h2><p>Administración ENT</p></div></div><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><button class="button button-outline" data-live-logout>Salir</button></div>
       <div class="admin-summary-grid"><div><small>SOLICITUDES</small><strong>${requests.length}</strong><span>En bandeja</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
       ${patientDirectory}
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-age">Edad</label><input class="input" id="manual-age" name="age" type="number" min="1" max="120" step="1" required /></div><div><label class="form-label" for="manual-plan">Consulta o paquete</label><select class="select" id="manual-plan" name="plan_code" required><option value="initial">Consulta inicial</option><option value="followup">Consulta de seguimiento</option><option value="bimonthly">Paquete bimestral · 2 consultas</option><option value="quarterly">Paquete trimestral · 3 consultas</option><option value="semester">Paquete semestral · 6 consultas</option><option value="couple">Consulta en pareja · 2 personas</option></select></div><div><label class="form-label" for="manual-password">Contraseña de acceso</label><div class="password-entry"><input class="input" id="manual-password" name="initial_password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="manual-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="manual-password">Copiar</button></div></div></div><p class="form-note">Tú defines la contraseña (mínimo 12 caracteres). Se establece al crear la cuenta; ENT no la guarda ni podrá consultarla después.</p><button class="button button-dark" type="submit">Crear acceso de paciente</button></form></section>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-age">Edad</label><input class="input" id="manual-age" name="age" type="number" min="1" max="120" step="1" required /></div><div><label class="form-label" for="manual-plan">Consulta o paquete</label><select class="select" id="manual-plan" name="plan_code" required><option value="initial">Consulta inicial</option><option value="followup">Consulta de seguimiento</option><option value="bimonthly">Paquete bimestral · 2 consultas</option><option value="quarterly">Paquete trimestral · 3 consultas</option><option value="semester">Paquete semestral · 6 consultas</option><option value="couple">Consulta en pareja · 2 personas</option></select></div><div><label class="form-label" for="manual-password">Contraseña de acceso</label><div class="password-entry"><input class="input" id="manual-password" name="initial_password" type="password" minlength="5" maxlength="15" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="manual-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="manual-password">Copiar</button></div></div></div><p class="form-note">Tú defines la contraseña (5 a 15 caracteres). Se establece al crear la cuenta; ENT no la guarda ni podrá consultarla después.</p><button class="button button-dark" type="submit">Crear acceso de paciente</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="dash-panel-head"><h3>Consultas presenciales · 2026</h3><span>PRECIOS PÚBLICOS EDITABLES</span></div><div class="form-grid">${priceField('Consulta inicial individual','consult_initial_price')}${priceField('Consulta seguimiento individual','consult_followup_price')}${priceField('Paquete bimestral · 2 consultas','consult_bimonthly_price')}${priceField('Paquete trimestral · 3 consultas','consult_quarterly_price')}${priceField('Paquete semestral · 6 consultas','consult_semester_price')}${priceField('Consulta en pareja · 2 personas','consult_couple_price')}</div><div><label class="form-label" for="consult-prices-until">Vigencia de precios</label><input class="input" id="consult-prices-until" name="consult_prices_valid_until" type="date" value="${settings.consult_prices_valid_until ? String(settings.consult_prices_valid_until).slice(0,10) : ''}" /></div><p class="form-note">La portada muestra estos precios y guarda cada solicitud en esta bandeja. Después, el paciente puede abrir WhatsApp y confirmar el envío del mensaje.</p><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-reference-type">Tipo de dato bancario</label><select class="select" id="bank-reference-type" name="bank_reference_type"><option value="CLABE interbancaria" ${settings.bank_reference_type==='CLABE interbancaria'?'selected':''}>CLABE interbancaria</option><option value="Número de tarjeta" ${settings.bank_reference_type==='Número de tarjeta'?'selected':''}>Número de tarjeta</option></select></div><div><label class="form-label" for="bank-reference-value">CLABE o número de tarjeta</label><input class="input" id="bank-reference-value" name="bank_reference_value" value="${escapeHtml(settings.bank_reference_value||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="bank-secondary-name">Segundo banco (opcional)</label><input class="input" id="bank-secondary-name" name="bank_secondary_name" value="${escapeHtml(settings.bank_secondary_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-secondary-reference-type">Tipo de dato · segundo banco</label><select class="select" id="bank-secondary-reference-type" name="bank_secondary_reference_type"><option value="CLABE interbancaria" ${settings.bank_secondary_reference_type==='CLABE interbancaria'?'selected':''}>CLABE interbancaria</option><option value="Número de tarjeta" ${settings.bank_secondary_reference_type==='Número de tarjeta'?'selected':''}>Número de tarjeta</option></select></div><div><label class="form-label" for="bank-secondary-reference-value">CLABE o número de tarjeta · segundo banco</label><input class="input" id="bank-secondary-reference-value" name="bank_secondary_reference_value" value="${escapeHtml(settings.bank_secondary_reference_value||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
         ${requests.length ? `<div class="table-scroll"><table class="admin-list"><thead><tr><th>NOMBRE</th><th>EDAD</th><th>USUARIO SOLICITADO</th><th>CONSULTA O PAQUETE</th><th>OBJETIVO</th><th>TELÉFONO</th><th>COMPROBANTE</th><th>ESTADO</th><th></th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.age ?? '—')} años</td><td>${escapeHtml(row.username)}</td><td>${escapeHtml(serviceLabel(row.plan_code))}</td><td>${escapeHtml(row.objective||'—')}</td><td>${escapeHtml(row.phone)}</td><td>${row.payment_proof_path ? (row.payment_proof_url ? `<a class="text-link" href="${escapeHtml(row.payment_proof_url)}" target="_blank" rel="noopener">Ver comprobante</a>` : 'No disponible') : 'No adjunto'}</td><td>${escapeHtml(row.status)}</td><td>${row.status==='new'?`<button class="text-link" data-create-account="${escapeHtml(row.id)}" data-app-name="${escapeHtml(row.full_name)}" data-app-age="${escapeHtml(row.age ?? '')}" data-app-username="${escapeHtml(row.username||'')}" data-app-phone="${escapeHtml(row.phone)}" data-app-objective="${escapeHtml(row.objective||'')}" data-app-plan="${escapeHtml(row.plan_code)}" data-app-months="${row.plan_months}">Revisar / crear acceso</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="panel-note">No hay solicitudes registradas.</p>'}
@@ -279,7 +289,7 @@
 
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Registrar valoración</h3><span>MEDICIONES</span></div>
         <form class="live-admin-form" id="admin-measurement-form"><label class="form-label" for="measurement-patient">Paciente</label><select class="select" id="measurement-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
-          <div class="form-grid"><div><label class="form-label" for="measurement-date">Fecha</label><input class="input" id="measurement-date" name="measured_on" type="date" required value="${new Date().toISOString().slice(0, 10)}" /></div><div><label class="form-label" for="measurement-weight">Peso (kg)</label><input class="input" id="measurement-weight" name="weight_kg" type="number" min="0" max="500" step="0.01" /></div><div><label class="form-label" for="measurement-height">Estatura (cm)</label><input class="input" id="measurement-height" name="height_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-fat">Grasa corporal (%)</label><input class="input" id="measurement-fat" name="body_fat_pct" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-muscle">Masa muscular (kg)</label><input class="input" id="measurement-muscle" name="muscle_mass_kg" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-visceral">Índice visceral</label><input class="input" id="measurement-visceral" name="visceral_fat_index" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-waist">Cintura (cm)</label><input class="input" id="measurement-waist" name="waist_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-hip">Cadera (cm)</label><input class="input" id="measurement-hip" name="hip_cm" type="number" min="0" max="300" step="0.01" /></div></div>
+          <div class="form-grid"><div><label class="form-label" for="measurement-date">Fecha</label><input class="input" id="measurement-date" name="measured_on" type="date" required value="${new Date().toISOString().slice(0, 10)}" /></div><div><label class="form-label" for="measurement-weight">Peso (kg)</label><input class="input" id="measurement-weight" name="weight_kg" type="number" min="0" max="500" step="0.01" /></div><div><label class="form-label" for="measurement-height">Estatura (cm)</label><input class="input" id="measurement-height" name="height_cm" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-fat">Grasa corporal (%)</label><input class="input" id="measurement-fat" name="body_fat_pct" type="number" min="0" max="100" step="0.01" /></div><div><label class="form-label" for="measurement-muscle">Masa muscular (kg)</label><input class="input" id="measurement-muscle" name="muscle_mass_kg" type="number" min="0" max="300" step="0.01" /></div><div><label class="form-label" for="measurement-waist">Cintura (cm)</label><input class="input" id="measurement-waist" name="waist_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label" for="measurement-hip">Cadera (cm)</label><input class="input" id="measurement-hip" name="hip_cm" type="number" min="0" max="300" step="0.01" /></div></div><details class="anthro-fields"><summary>Antropometría detallada</summary><div class="form-grid"><div><label class="form-label">Pliegue tricipital (mm)</label><input class="input" name="triceps_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Pliegue bicipital (mm)</label><input class="input" name="biceps_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Pliegue subescapular (mm)</label><input class="input" name="subscapular_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Pliegue suprailiaco (mm)</label><input class="input" name="suprailiac_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Pliegue supraespinal (mm)</label><input class="input" name="supraspinale_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Pliegue abdominal (mm)</label><input class="input" name="abdominal_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Pliegue muslo (mm)</label><input class="input" name="thigh_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Pliegue pantorrilla medial (mm)</label><input class="input" name="medial_calf_skinfold_mm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Circunferencia brazo relajado (cm)</label><input class="input" name="arm_relaxed_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Circunferencia brazo contraído (cm)</label><input class="input" name="arm_flexed_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Circunferencia antebrazo (cm)</label><input class="input" name="forearm_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Circunferencia muñeca (cm)</label><input class="input" name="wrist_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Circunferencia cadera (cm)</label><input class="input" name="hip_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Circunferencia muslo (cm)</label><input class="input" name="thigh_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Circunferencia pantorrilla (cm)</label><input class="input" name="calf_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Diámetro húmero (cm)</label><input class="input" name="humerus_breadth_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Diámetro biestiloideo muñeca (cm)</label><input class="input" name="wrist_bistyloid_breadth_cm" type="number" min="0" max="300" step="0.1" /></div><div><label class="form-label">Diámetro fémur (cm)</label><input class="input" name="femur_breadth_cm" type="number" min="0" max="300" step="0.1" /></div></div></details>
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar medición</button>
         </form>
       </section>
@@ -295,28 +305,23 @@
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Publicar entrenamiento</h3><span>RUTINAS PERSONALIZADAS</span></div>
         <form class="live-admin-form" id="admin-training-form"><label class="form-label" for="training-patient">Paciente</label><select class="select" id="training-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
           <label class="form-label" for="training-title">Título</label><input class="input" id="training-title" name="title" maxlength="180" required placeholder="Ej. Rutina · bloque 1" />
-          <label class="form-label" for="training-content">Entrenamiento e indicaciones</label><textarea class="input live-textarea" id="training-content" name="plan_content" required></textarea>
+          <label class="form-label" for="training-content">Entrenamiento e indicaciones</label><textarea class="input live-textarea" id="training-content" name="plan_content"></textarea><label class="form-label" for="training-pdf">PDF del entrenamiento</label><input class="input" id="training-pdf" name="training_pdf" type="file" accept="application/pdf,.pdf" required /><small class="photo-upload-hint">Máximo 10 MB. Se elimina del almacenamiento tras la descarga del paciente.</small>
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar entrenamiento</button>
         </form>
       </section>
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Clases de entrenamiento</h3><span>VIDEOS PERSONALIZADOS</span></div>
-        <form class="live-admin-form" id="admin-class-form"><label class="form-label" for="class-patient">Paciente</label><select class="select" id="class-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
-          <label class="form-label" for="class-title">Nombre de la clase</label><input class="input" id="class-title" name="title" maxlength="180" required placeholder="Ej. Técnica de sentadilla" />
-          <label class="form-label" for="class-url">Enlace de YouTube</label><input class="input" id="class-url" name="video_url" type="url" inputmode="url" maxlength="500" required placeholder="https://youtu.be/…" />
-          <label class="form-label" for="class-description">Indicaciones (opcional)</label><textarea class="input live-textarea" id="class-description" name="plan_content" maxlength="3000"></textarea>
-          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Asignar clase</button>
-        </form>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Lifestyle para todos</h3><span>CONTENIDO GENERAL</span></div>
+        <form class="live-admin-form" id="admin-lifestyle-form">
+          <input class="input" name="title" maxlength="160" required placeholder="Título del tema" aria-label="Título del tema" />
+          <input class="input" name="youtube_url" type="url" maxlength="500" required placeholder="Enlace de YouTube" aria-label="Enlace de YouTube" />
+          <button class="button button-dark" type="submit">Agregar Lifestyle</button>
+        </form><div id="admin-lifestyle-list"></div>
       </section>
-      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Contenido Lifestyle</h3><span>LECTURA PERSONALIZADA</span></div>
-        <form class="live-admin-form" id="admin-lifestyle-form"><label class="form-label" for="lifestyle-patient">Paciente</label><select class="select" id="lifestyle-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
-          <label class="form-label" for="lifestyle-title">Título</label><input class="input" id="lifestyle-title" name="title" maxlength="160" required placeholder="Ej. Hábitos para mejorar el descanso" />
-          <label class="form-label" for="lifestyle-message">Información</label><textarea class="input live-textarea" id="lifestyle-message" name="message" maxlength="8000" required></textarea>
-          <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Publicar en Lifestyle</button>
-        </form>
+      <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Preguntas frecuentes</h3><span>IMAGEN COMPARTIDA</span></div>
+        <form class="live-admin-form" id="admin-faq-form"><label class="form-label">Subir imagen de preguntas frecuentes</label><input class="input" name="faq_image" type="file" accept="image/*" required /><button class="button button-dark" type="submit">Publicar imagen</button></form><div id="admin-faq-preview"></div>
       </section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Agendar consulta</h3><span>AGENDA</span></div>
         <form class="live-admin-form" id="admin-appointment-form"><label class="form-label" for="appointment-patient">Paciente</label><select class="select" id="appointment-patient" name="patient_id" required>${emptyPatientOption}${patientOptions}</select>
-          <div class="form-grid"><div><label class="form-label" for="appointment-date-time">Fecha y hora</label><input class="input" id="appointment-date-time" name="scheduled_at" type="datetime-local" required /></div><div><label class="form-label" for="appointment-type">Modalidad</label><select class="select" id="appointment-type" name="appointment_type" required><option value="" disabled selected>Elige modalidad</option><option value="in_person">Presencial</option><option value="online">En línea</option></select></div></div>
+          <div class="form-grid"><div><label class="form-label" for="appointment-date-time">Fecha y hora</label><input class="input" id="appointment-date-time" name="scheduled_at" type="datetime-local" lang="en-US" step="900" required /></div><div><label class="form-label" for="appointment-type">Modalidad</label><select class="select" id="appointment-type" name="appointment_type" required><option value="" disabled selected>Elige modalidad</option><option value="in_person">Presencial</option><option value="online">En línea</option></select></div></div>
           <label class="form-label" for="appointment-location">Dirección o enlace</label><input class="input" id="appointment-location" name="location_or_link" maxlength="500" minlength="3" required />
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar consulta</button>
         </form>
@@ -324,6 +329,12 @@
       <div class="preview-callout">Cada medición, dieta, rutina, clase, contenido Lifestyle y consulta se guarda en el expediente elegido. Revisa el paciente seleccionado antes de publicar.</div>
     </div>`);
     organizeAdminWorkspace();
+    const lifeList=content.querySelector('#admin-lifestyle-list');
+    if(lifeList){
+      const {data,error}=await client.from('lifestyle_library').select('id,title,youtube_url,created_at').order('created_at',{ascending:false});
+      if(error)throw error;
+      lifeList.innerHTML=data?.length?data.map(x=>`<div class="hist-row"><b>${escapeHtml(x.title)}</b><a href="${escapeHtml(x.youtube_url)}" target="_blank" rel="noopener">Abrir ↗</a><button class="button button-danger" data-delete-lifestyle="${escapeHtml(x.id)}">Eliminar</button></div>`).join(''):'<p class="panel-note">Aún no hay temas Lifestyle. Agrega un título y un enlace de YouTube.</p>';
+    }
   };
 
   const setLoginError = (message) => {
@@ -340,7 +351,7 @@
       <input type="hidden" name="application_id" value="${escapeHtml(application.id)}" />
       <div class="form-grid"><div><label class="form-label" for="application-username">Usuario</label><input class="input" id="application-username" value="${escapeHtml(application.username)}" readonly /></div><div><label class="form-label" for="application-phone">WhatsApp</label><input class="input" id="application-phone" value="${escapeHtml(application.phone)}" readonly /></div><div><label class="form-label" for="application-age">Edad</label><input class="input" id="application-age" value="${escapeHtml(application.age ?? '—')} años" readonly /></div></div>
       <p class="form-note">Servicio: ${escapeHtml(serviceLabel(application.plan))} · ${escapeHtml(application.months)} mes(es).<br>Objetivo: ${escapeHtml(application.objective||'No especificado')}.</p><div class="form-grid"><div><label class="form-label" for="application-appointment-date">Fecha y hora de consulta</label><input class="input" id="application-appointment-date" name="scheduled_at" type="datetime-local" required /></div><div><label class="form-label" for="application-appointment-type">Modalidad</label><select class="select" id="application-appointment-type" name="appointment_type" required><option value="" disabled selected>Elige modalidad</option><option value="in_person">Presencial</option><option value="online">En línea</option></select></div></div><label class="form-label" for="application-appointment-location">Dirección o enlace</label><input class="input" id="application-appointment-location" name="location_or_link" maxlength="500" required minlength="3" placeholder="Dirección del consultorio o enlace de consulta" />
-      <label class="form-label" for="application-password">Contraseña de acceso · mínimo 12 caracteres</label><div class="password-entry"><input class="input" id="application-password" name="initial_password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="application-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="application-password">Copiar</button></div>
+      <label class="form-label" for="application-password">Contraseña de acceso · 5 a 15 caracteres</label><div class="password-entry"><input class="input" id="application-password" name="initial_password" type="password" minlength="5" maxlength="15" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="application-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="application-password">Copiar</button></div>
       <button class="button button-dark form-submit" type="submit">Crear cuenta y expediente →</button>
     </form><button class="button button-outline form-submit" type="button" data-cancel-create-access>Volver al administrador</button>
   </div>`);
@@ -374,7 +385,7 @@
       : opensWhatsApp
         ? 'El acceso se creó, pero esta solicitud no tiene autorización de WhatsApp registrada.'
         : 'Alta manual: se creó el acceso. Esta cuenta no está vinculada a una solicitud con autorización de WhatsApp.';
-    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado</b><span>${escapeHtml(notificationText)}</span><span>Usuario</span><div class="password-entry"><input class="input" id="created-username" value="${escapeHtml(data.username)}" readonly /><button class="button button-outline password-action" type="button" data-copy-from="created-username">Copiar</button></div><span>Contraseña</span><div class="password-entry"><input class="input" id="created-password" type="text" value="${escapeHtml(data.initial_password)}" readonly /><button class="button button-outline password-action" type="button" data-toggle-password="created-password" aria-label="Ocultar contraseña">Ocultar</button><button class="button button-outline password-action" type="button" data-copy-from="created-password">Copiar</button></div><small>La contraseña se muestra una sola vez en el administrador. ${data.scheduled_at ? 'La confirmación también incluye la fecha, hora, modalidad y ubicación de la cita.' : ''}</small></section>`);
+    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado</b><span>${escapeHtml(notificationText)}</span><span>Usuario</span><div class="password-entry"><input class="input" id="created-username" value="${escapeHtml(data.username)}" readonly /><button class="button button-outline password-action" type="button" data-copy-from="created-username">Copiar</button></div><span>Contraseña</span><div class="password-entry"><input class="input" id="created-password" type="password" value="${escapeHtml(data.initial_password)}" readonly /><button class="button button-outline password-action" type="button" data-toggle-password="created-password" aria-label="Ocultar contraseña">Ocultar</button><button class="button button-outline password-action" type="button" data-copy-from="created-password">Copiar</button></div><small>La contraseña se muestra una sola vez en el administrador. ${data.scheduled_at ? 'La confirmación también incluye la fecha, hora, modalidad y ubicación de la cita.' : ''}</small></section>`);
   };
   const promoteInitialAdmin = async () => {
     const { data, error } = await client.functions.invoke('ent-admin-bootstrap');
@@ -382,6 +393,26 @@
     const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
     if (refreshError || !refreshed?.session?.user) throw new Error('Se habilitó la cuenta, pero no se pudo actualizar la sesión. Inicia sesión de nuevo.');
     return refreshed.session.user;
+  };
+  let entRealtimeChannel=null, entRealtimeTimer=null;
+  const startEntRealtime=()=>{
+    if(!client||!activeUser)return;
+    if(entRealtimeChannel)client.removeChannel(entRealtimeChannel);
+    const role=activeUser.app_metadata?.role;
+    const tables=['patient_profiles','patient_applications','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads','site_configuration','lifestyle_library','faq_visual'];
+    let ch=client.channel('ent-live-'+activeUser.id);
+    for(const table of tables){
+      const ownerColumn=table==='patient_profiles'?'user_id':'patient_id';
+      const filter=role==='patient'&&['patient_profiles','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads'].includes(table)?{event:'*',schema:'public',table,filter:ownerColumn+'=eq.'+activeUser.id}:{event:'*',schema:'public',table};
+      ch=ch.on('postgres_changes',filter,()=>{
+        clearTimeout(entRealtimeTimer);
+        entRealtimeTimer=setTimeout(async()=>{
+          if(!activeUser||content.querySelector('#created-password'))return;
+          try{if(activeUser.app_metadata?.role==='admin')await renderAdmin();else await renderPatient(activeTab)}catch(err){console.error('ENT realtime refresh failed',err)}
+        },180);
+      });
+    }
+    entRealtimeChannel=ch.subscribe();
   };
   const enterPortal = async (user) => {
     activeUser = user;
@@ -399,7 +430,7 @@
           return;
         }
       }
-      await renderAdmin();
+      await renderAdmin();startEntRealtime();
       return;
     }
     if (user.app_metadata?.role === 'admin') {
@@ -416,16 +447,17 @@
     }
     activeProfile = data;
     activeTab = 'resumen';
-    await renderPatient();
+    await renderPatient();startEntRealtime();
   };
 
   document.addEventListener('click', async (event) => {
-    const dietDownload = event.target.closest('[data-download-diet]');
+    const dietDownload = event.target.closest('[data-download-diet], [data-download-training]');
     if (dietDownload) {
       event.preventDefault(); event.stopImmediatePropagation();
       const button = dietDownload;
-      const updateId = button.dataset.downloadDiet;
-      const filename = String(button.dataset.fileName || 'Dieta ENT.pdf').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 150);
+      const isTraining = button.hasAttribute('data-download-training');
+      const updateId = isTraining ? button.dataset.downloadTraining : button.dataset.downloadDiet;
+      const filename = String(button.dataset.fileName || (isTraining ? 'Entrenamiento ENT.pdf' : 'Dieta ENT.pdf')).replace(/[\\/:*?"<>|]+/g, '_').slice(0, 150);
       button.disabled = true; button.textContent = 'Preparando descarga…';
       try {
         const { data: sessionData, error: sessionError } = await client.auth.getSession();
@@ -433,7 +465,7 @@
         const response = await fetch(`${config.url}/functions/v1/download-diet-pdf`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${sessionData.session.access_token}`, 'apikey': config.publishableKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ update_id: updateId })
+          body: JSON.stringify({ update_id: updateId, type: isTraining ? 'training' : 'diet' })
         });
         if (!response.ok) {
           const result = await response.json().catch(() => ({}));
@@ -443,13 +475,21 @@
         const objectUrl = URL.createObjectURL(blob);
         const anchor = document.createElement('a'); anchor.href = objectUrl; anchor.download = filename;
         document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
-        await patientView('dieta');
+        await patientView(isTraining ? 'entrenamiento' : 'dieta');
         content.querySelector('#patient-live-content')?.insertAdjacentHTML('afterbegin', '<p class="admin-success" role="status">PDF descargado. El archivo ya se retiró del almacenamiento de ENT.</p>');
       } catch (error) {
         button.disabled = false; button.textContent = 'Reintentar descarga';
         content.querySelector('#patient-live-content')?.insertAdjacentHTML('afterbegin', `<p class="login-error" role="alert">${escapeHtml(error.message || 'No se pudo descargar el archivo.')}</p>`);
       }
       return;
+    }
+    const lifestyleDelete=event.target.closest('[data-delete-lifestyle]');
+    if(lifestyleDelete){
+      event.preventDefault();event.stopImmediatePropagation();
+      if(!window.confirm('¿Eliminar este contenido Lifestyle para todos los pacientes?'))return;
+      const {error}=await client.from('lifestyle_library').delete().eq('id',lifestyleDelete.dataset.deleteLifestyle);
+      if(error){setLoginError('No se pudo eliminar el tema.');return;}
+      await renderAdmin();return;
     }
     const bulkDelete = event.target.closest('[data-bulk-delete]');
     if (bulkDelete) {
@@ -546,6 +586,19 @@
       event.preventDefault(); event.stopImmediatePropagation();
       const form = content.querySelector('#admin-delete-patient-form');
       form?.reset(); if (form) form.hidden = true;
+      return;
+    }
+    const appointmentResponse=event.target.closest('[data-appointment-response]');
+    if(appointmentResponse){
+      event.preventDefault();event.stopImmediatePropagation();
+      const status=appointmentResponse.dataset.appointmentResponse;
+      const appointmentId=appointmentResponse.dataset.appointmentId;
+      if(status==='reschedule_requested'&&!window.confirm('¿Enviar a ENT una solicitud para reagendar?'))return;
+      appointmentResponse.disabled=true;
+      const {error}=await client.from('appointments').update({status}).eq('id',appointmentId).eq('patient_id',activeUser.id);
+      if(error){setLoginError('No se pudo actualizar la cita. Intenta otra vez.');appointmentResponse.disabled=false;return;}
+      await client.from('patient_notifications').insert({patient_id:activeUser.id,category:'appointment',title:status==='confirmed'?'Consulta confirmada':'Reagenda solicitada',message:status==='confirmed'?'Tu consulta quedó confirmada.':'ENT recibió tu solicitud de reagenda y revisará nuevas opciones.'});
+      patientView('avisos').catch(err=>setLoginError(err.message||'No se pudo actualizar el aviso.'));
       return;
     }
     const readNotice = event.target.closest('[data-mark-read]');
@@ -655,7 +708,7 @@
       event.preventDefault();event.stopImmediatePropagation();
       const values=Object.fromEntries(new FormData(form).entries());
       if(values.password!==values.confirm_password){setLoginError('Las contraseñas no coinciden.');return;}
-      if(String(values.password).length<12){setLoginError('Usa al menos 12 caracteres.');return;}
+      if(String(values.password).length<5||String(values.password).length>15){setLoginError('Usa entre 5 y 15 caracteres.');return;}
       const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Guardando…';
       const { error }=await client.auth.updateUser({password:values.password,data:{must_change_password:false}});
       if(error){setLoginError('No se pudo actualizar la contraseña. Intenta de nuevo.');button.disabled=false;button.textContent='Guardar y continuar →';return;}
@@ -665,7 +718,7 @@
       event.preventDefault();event.stopImmediatePropagation();
       const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Creando acceso…';
       const values=Object.fromEntries(new FormData(form).entries());
-      if (String(values.initial_password||'').length < 12 || String(values.initial_password||'').length > 72) { setLoginError('La contraseña debe tener entre 12 y 72 caracteres.');button.disabled=false;button.textContent='Crear acceso de paciente';return; }
+      if (String(values.initial_password||'').length < 5 || String(values.initial_password||'').length > 15) { setLoginError('La contraseña debe tener entre 5 y 15 caracteres.');button.disabled=false;button.textContent='Crear acceso de paciente';return; }
       try {
         if (form.id === 'admin-application-create-form') await createPatientAccount({ application_id: values.application_id, initial_password: values.initial_password, scheduled_at: new Date(values.scheduled_at).toISOString(), appointment_type: values.appointment_type, location_or_link: values.location_or_link.trim() });
         else await createPatientAccount({ full_name: values.full_name, username: values.username, phone: values.phone, age: Number(values.age), plan_code: values.plan_code, plan_months: serviceMonths[values.plan_code], initial_password: values.initial_password });
@@ -713,7 +766,17 @@
           submit.disabled = false;submit.textContent = 'Reintentar guardado';
         }
         return;
-      } else if (form.id === 'admin-measurement-form') {
+      } else if(form.id==='admin-faq-form') {
+        const file=values.faq_image;
+        if(!(file instanceof File)||!file.size||!file.type.startsWith('image/')||file.size>10*1024*1024)throw new Error('Adjunta una imagen de máximo 10 MB.');
+        const path=`faq/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+        const {error:uploadError}=await client.storage.from('ent-faq-images').upload(path,file,{upsert:false,contentType:file.type});if(uploadError)throw uploadError;
+        const {data:old}=await client.from('faq_visual').select('image_path').eq('id',1).maybeSingle();
+        const {error:saveError}=await client.from('faq_visual').upsert({id:1,image_path:path,image_name:file.name,updated_by:activeUser.id,updated_at:new Date().toISOString()});
+        if(saveError){await client.storage.from('ent-faq-images').remove([path]);throw saveError;}
+        if(old?.image_path)await client.storage.from('ent-faq-images').remove([old.image_path]);await renderAdmin();return;
+      }
+      if (form.id === 'admin-measurement-form') {
         table = 'body_measurements';
         record = {
           patient_id: values.patient_id,
@@ -722,8 +785,25 @@
           body_fat_pct: numericOrNull(values.body_fat_pct),
           muscle_mass_kg: numericOrNull(values.muscle_mass_kg),
           height_cm: numericOrNull(values.height_cm),
-          visceral_fat_index: numericOrNull(values.visceral_fat_index),
           waist_cm: numericOrNull(values.waist_cm),
+          triceps_skinfold_mm: numericOrNull(values.triceps_skinfold_mm),
+          biceps_skinfold_mm: numericOrNull(values.biceps_skinfold_mm),
+          subscapular_skinfold_mm: numericOrNull(values.subscapular_skinfold_mm),
+          suprailiac_skinfold_mm: numericOrNull(values.suprailiac_skinfold_mm),
+          supraspinale_skinfold_mm: numericOrNull(values.supraspinale_skinfold_mm),
+          abdominal_skinfold_mm: numericOrNull(values.abdominal_skinfold_mm),
+          thigh_skinfold_mm: numericOrNull(values.thigh_skinfold_mm),
+          medial_calf_skinfold_mm: numericOrNull(values.medial_calf_skinfold_mm),
+          arm_relaxed_cm: numericOrNull(values.arm_relaxed_cm),
+          arm_flexed_cm: numericOrNull(values.arm_flexed_cm),
+          forearm_cm: numericOrNull(values.forearm_cm),
+          wrist_cm: numericOrNull(values.wrist_cm),
+          hip_cm: numericOrNull(values.hip_cm),
+          thigh_cm: numericOrNull(values.thigh_cm),
+          calf_cm: numericOrNull(values.calf_cm),
+          humerus_breadth_cm: numericOrNull(values.humerus_breadth_cm),
+          wrist_bistyloid_breadth_cm: numericOrNull(values.wrist_bistyloid_breadth_cm),
+          femur_breadth_cm: numericOrNull(values.femur_breadth_cm),
           hip_cm: numericOrNull(values.hip_cm),
           created_by: activeUser.id
         };
@@ -743,7 +823,7 @@
         record = {
           patient_id: values.patient_id,
           title: values.title.trim(),
-          plan_content: values.plan_content.trim(),
+          plan_content: values.plan_content.trim() || 'Descarga el PDF del entrenamiento.',
           content_type: 'plan',
           is_published: true,
           published_at: new Date().toISOString(),
@@ -756,8 +836,10 @@
         table = 'training_plans';
         record = { patient_id: values.patient_id, title: values.title.trim(), plan_content: values.plan_content.trim(), video_url: videoUrl.href, content_type: 'class', is_published: true, published_at: new Date().toISOString(), created_by: activeUser.id };
       } else if (form.id === 'admin-lifestyle-form') {
-        table = 'patient_notifications';
-        record = { patient_id: values.patient_id, category: 'lifestyle', title: values.title.trim(), message: values.message.trim() };
+        table = 'lifestyle_library';
+        let url; try { url = new URL(values.youtube_url.trim()); } catch (_) { throw new Error('Escribe un enlace válido de YouTube.'); }
+        if(url.protocol!=='https:'||!['youtube.com','www.youtube.com','youtu.be'].includes(url.hostname))throw new Error('Usa un enlace seguro de YouTube.');
+        record = { title: values.title.trim(), youtube_url: url.href, created_by: activeUser.id };
       } else {
         table = 'appointments';
         record = {
@@ -779,13 +861,25 @@
           if (uploadError) throw uploadError;
           record.diet_pdf_path = uploadedDietPdfPath;
           record.diet_pdf_name = file.name.slice(0, 200);
+        } else if(form.id==='admin-training-form') {
+          const file=values.training_pdf;
+          if(!(file instanceof File)||!file.size||file.type!=='application/pdf'||file.size>10*1024*1024||await file.slice(0,5).text()!=='%PDF-')throw new Error('Adjunta un PDF válido de máximo 10 MB.');
+          uploadedDietPdfPath=`${values.patient_id}/${crypto.randomUUID()}.pdf`;
+          const {error:uploadError}=await client.storage.from('training-files').upload(uploadedDietPdfPath,file,{cacheControl:'3600',contentType:'application/pdf',upsert:false});if(uploadError)throw uploadError;
+          record.training_pdf_path=uploadedDietPdfPath;record.training_pdf_name=file.name.slice(0,200);
         }
         const selectedPatient = form.querySelector('select[name="patient_id"]')?.selectedOptions?.[0];
         let patientPhone = (selectedPatient?.dataset.phone || '').replace(/\D/g, ''); if (patientPhone.length === 10) patientPhone = `52${patientPhone}`;
         const patientName = selectedPatient?.textContent.split(' · ')[0] || 'paciente';
         const { error } = await client.from(table).insert(record);
         if (error) throw error;
-        if (form.id === 'admin-diet-form') dietRecordSaved = true;
+        if(form.id==='admin-measurement-form'||form.id==='admin-diet-form'||form.id==='admin-training-form'||form.id==='admin-appointment-form'){
+          const category=form.id==='admin-measurement-form'?'measurement':form.id==='admin-diet-form'?'diet':form.id==='admin-training-form'?'training':'appointment';
+          const title=category==='measurement'?'Nueva medición publicada':category==='diet'?'Tu dieta está actualizada':category==='training'?'Nuevo entrenamiento publicado':'Consulta agendada';
+          const message=category==='appointment'?'ENT registró una consulta en tu perfil. Revisa fecha y hora en Consultas.':'ENT actualizó información en tu perfil. Entra para revisarla.';
+          const {error:noticeError}=await client.from('patient_notifications').insert({patient_id:values.patient_id,category,title,message});if(noticeError)throw noticeError;
+        }
+        if (form.id === 'admin-diet-form'||form.id==='admin-training-form') dietRecordSaved = true;
         await renderAdmin();
         if (patientPhone) {
           
@@ -793,7 +887,7 @@
         }
       } catch (error) {
         if (uploadedDietPdfPath && !dietRecordSaved) {
-          await client.storage.from('nutrition-files').remove([uploadedDietPdfPath]).catch(() => {});
+          await client.storage.from(form.id==='admin-training-form'?'training-files':'nutrition-files').remove([uploadedDietPdfPath]).catch(() => {});
         }
         const notice = content.querySelector('.live-notice');
         if (notice) notice.remove();
