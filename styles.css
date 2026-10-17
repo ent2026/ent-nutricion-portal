@@ -331,3 +331,12 @@
   .request-progress-fill{transition-duration:.35s}
   .request-progress-check{transition-delay:.3s}
 }
+
+/* Alerta persistente de nuevas solicitudes ENT */
+.admin-new-applications-alert.is-alerting{border-color:#ba202b;animation:entNewApplicationsFlash 1.15s ease-out infinite}
+.admin-new-applications-alert.is-alerting .dash-panel-head h3,.admin-new-applications-alert.is-alerting .dash-panel-head span{color:#fff}
+.admin-new-applications-alert.is-alerting .table-scroll{background:#fff;border-radius:2px}
+.application-alert-row{background:#fff0f0}
+@keyframes entNewApplicationsFlash{0%{background-color:rgba(186,32,43,1);box-shadow:0 0 0 3px rgba(186,32,43,1)}100%{background-color:rgba(186,32,43,0);box-shadow:0 0 0 0 rgba(186,32,43,0)}}
+@media(max-width:650px){.admin-new-applications-alert.is-alerting{padding:13px;animation-duration:1.15s}.admin-new-applications-alert .dash-panel-head{gap:10px}.admin-new-applications-alert .dash-panel-head h3{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.admin-new-applications-alert.is-alerting{animation:none;background:#f7dfe1;box-shadow:0 0 0 3px #ba202b}.admin-new-applications-alert.is-alerting .dash-panel-head h3,.admin-new-applications-alert.is-alerting .dash-panel-head span{color:#7e1d24}}
