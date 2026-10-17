@@ -386,6 +386,7 @@
       lifeList.innerHTML=data?.length?data.map(x=>`<div class="hist-row"><b>${escapeHtml(x.title)}</b><a href="${escapeHtml(x.youtube_url)}" target="_blank" rel="noopener">Abrir ↗</a><button class="button button-danger" data-delete-lifestyle="${escapeHtml(x.id)}">Eliminar</button></div>`).join(''):'<p class="panel-note">Aún no hay temas Lifestyle. Agrega un título y un enlace de YouTube.</p>';
     }
     applyCollapsedAdminForms();
+    updateEntAdminAudioButton();
   };
 
   const setLoginError = (message) => {
@@ -489,6 +490,7 @@
     const button=content?.querySelector('[data-admin-audio-test]');
     if(!button)return;
     const ready=entAdminAudioContext?.state==='running';
+    button.classList.toggle('audio-needs-activation',!ready);
     button.textContent=ready?'Sonido activado ✓':'Activar sonido';
     button.setAttribute('aria-pressed',String(ready));
     button.title=ready?'Las alertas sonoras están habilitadas en este navegador.':'Pulsa una vez para habilitar el sonido de las alertas.';
@@ -711,6 +713,7 @@
       const soundNow=()=>{
         if(ctx.state!=='running'){soundTest.textContent='Toca para activar el sonido';return}
         playEntAdminApplicationAlert();
+        soundTest.classList.remove('audio-needs-activation');
         soundTest.textContent='Sonido activado ✓';
         soundTest.setAttribute('aria-pressed','true');
         soundTest.title='Las alertas sonoras están habilitadas en este navegador.';
