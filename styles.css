@@ -354,3 +354,8 @@
 .admin-summary-alert.is-alerting small,.admin-summary-alert.is-alerting strong,.admin-summary-alert.is-alerting span{color:#fff!important}
 .admin-summary-alert.is-alerting span{font-weight:700}
 @media(prefers-reduced-motion:reduce){.admin-summary-alert.is-alerting{animation:none;background:#ba202b!important;box-shadow:0 0 0 3px #941a23}.admin-summary-alert.is-alerting small,.admin-summary-alert.is-alerting strong,.admin-summary-alert.is-alerting span{color:#fff!important}}
+
+/* Controles de sonido de las alertas del administrador ENT. */
+.admin-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.admin-header-actions .button{white-space:nowrap}
+@media(max-width:600px){.admin-header-actions{gap:6px}.admin-header-actions .button{padding:9px 10px;font-size:9px}}
