@@ -295,3 +295,10 @@
 @media(max-width:600px){.footer-policy-body{padding:40px 12px 11px}.footer-policy-close{top:6px;right:7px;width:30px;height:30px}}
 
 @media(max-width:650px){.lifestyle-entry{grid-template-columns:1fr}.lifestyle-entry-label{grid-column:auto}.lifestyle-form-actions{display:grid;grid-template-columns:1fr}.lifestyle-form-actions .button{width:100%;justify-self:stretch}}
+
+
+.admin-section form[hidden]{display:none!important}
+.admin-form-success{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:10px;padding:14px 16px;background:#edf3eb;border:1px solid #d8e3d5;border-left:3px solid var(--green);color:#33523b;font-size:12px;line-height:1.5}
+.admin-form-success span{font-weight:600}
+.admin-form-success .button{flex:0 0 auto;margin:0}
+@media(max-width:650px){.admin-form-success{align-items:stretch;flex-direction:column}.admin-form-success .button{width:100%;justify-self:stretch}}
