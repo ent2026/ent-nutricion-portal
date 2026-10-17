@@ -271,6 +271,8 @@
       return { ...row, payment_proof_url: error ? null : data?.signedUrl || null };
     }));
     const upcoming = appointments.data || [];
+    const patientById=new Map(patients.map(x=>[x.user_id,x]));
+    const appointmentDirectory=`<section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Agenda y reagendas</h3><span>${upcoming.length} PRÓXIMAS</span></div>${upcoming.length?upcoming.map(a=>{const patient=patientById.get(a.patient_id)||{};return `<div class="hist-row"><span><b>${escapeHtml(patient.full_name||'Paciente')}</b><br><small>${escapeHtml(dateTimeLabel(a.scheduled_at))} · ${escapeHtml(a.status)}</small></span><button class="button button-outline" data-open-reschedule data-id="${escapeHtml(a.id)}" data-patient-id="${escapeHtml(a.patient_id)}" data-patient-name="${escapeHtml(patient.full_name||'Paciente')}" data-phone="${escapeHtml(patient.phone||'')}" data-date="${escapeHtml(a.scheduled_at)}" data-type="${escapeHtml(a.appointment_type)}">Reagendar</button></div>`}).join(''):'<p class="panel-note">No hay consultas próximas.</p>'}</section>`;
     const patientOptions = patients.map((row) => `<option value="${escapeHtml(row.user_id)}" data-phone="${escapeHtml(row.phone||'')}">${escapeHtml(row.full_name)} · ${escapeHtml(serviceLabel(row.plan_code))}</option>`).join('');
     const emptyPatientOption = patients.length ? '' : '<option value="">Primero crea una cuenta de paciente</option>';
     const settings = configuration.data;
@@ -326,7 +328,7 @@
           <button class="button button-dark" type="submit" ${patients.length ? '' : 'disabled'}>Guardar consulta</button>
         </form>
       </section>
-      <div class="preview-callout">Cada medición, dieta, rutina, clase, contenido Lifestyle y consulta se guarda en el expediente elegido. Revisa el paciente seleccionado antes de publicar.</div>
+      ${appointmentDirectory}<div class="preview-callout">Cada valoración, dieta, entrenamiento, Lifestyle, aviso y consulta se guarda o comparte desde ENT.</div>
     </div>`);
     organizeAdminWorkspace();
     const lifeList=content.querySelector('#admin-lifestyle-list');
@@ -481,6 +483,15 @@
         button.disabled = false; button.textContent = 'Reintentar descarga';
         content.querySelector('#patient-live-content')?.insertAdjacentHTML('afterbegin', `<p class="login-error" role="alert">${escapeHtml(error.message || 'No se pudo descargar el archivo.')}</p>`);
       }
+      return;
+    }
+    const reschedule=event.target.closest('[data-open-reschedule]');
+    if(reschedule){
+      event.preventDefault();event.stopImmediatePropagation();
+      const fmt=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+      const dt=fmt.format(new Date(reschedule.dataset.date)).replace(' ','T');
+      const min=fmt.format(new Date()).replace(' ','T');
+      showModal('<div class="dashboard login-wrap"><div class="modal-kicker">AGENDA ENT</div><h2 id="modal-title">Reagendar consulta</h2><p class="modal-lede">'+escapeHtml(reschedule.dataset.patientName)+'</p><form class="live-admin-form" id="admin-reschedule-form"><input type="hidden" name="appointment_id" value="'+escapeHtml(reschedule.dataset.id)+'"><input type="hidden" name="patient_id" value="'+escapeHtml(reschedule.dataset.patientId)+'"><input type="hidden" name="patient_name" value="'+escapeHtml(reschedule.dataset.patientName)+'"><label class="form-label" for="reschedule-date">Nueva fecha y hora</label><input class="input" id="reschedule-date" name="scheduled_at" type="datetime-local" lang="en-US" step="900" min="'+min+'" value="'+dt+'" required><button class="button button-dark form-submit" type="submit">Guardar nueva cita</button></form></div>');
       return;
     }
     const rejectApplication=event.target.closest('[data-reject-application]');
@@ -909,6 +920,15 @@
         submit.textContent = 'Intentar de nuevo';
       }
       return;
+    }
+    if(form.id==='admin-reschedule-form'){
+      event.preventDefault();event.stopImmediatePropagation();
+      const values=Object.fromEntries(new FormData(form).entries());const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Guardando…';
+      const {error}=await client.from('appointments').update({scheduled_at:new Date(values.scheduled_at).toISOString(),status:'scheduled',reminder_sent_at:null}).eq('id',values.appointment_id);
+      if(error){setLoginError('No se pudo reagendar la consulta.');button.disabled=false;return;}
+      const {error:noticeError}=await client.from('patient_notifications').insert({patient_id:values.patient_id,category:'appointment',title:'Tu consulta fue reagendada',message:'Hola '+values.patient_name.split(' ')[0]+'. ENT actualizó tu consulta para el '+dateTimeLabel(values.scheduled_at)+'. Confirma tu asistencia desde Avisos en tu portal.'});
+      if(noticeError)console.error('No se pudo crear aviso de reagenda',noticeError);
+      await renderAdmin();content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success">Nueva fecha guardada. El aviso ya está en el portal del paciente.</p>');return;
     }
     if (form.id !== 'ent-login-form') return;
     event.preventDefault();
