@@ -58,7 +58,8 @@ const closeModal = () => {
   document.body.style.overflow='';
 };
 
-async function startEnrollment(serviceCode='initial', objective='') {\n  if (!siteSettings) await loadPublicSettings();
+async function startEnrollment(serviceCode='initial', objective='') {
+  if (!siteSettings) await loadPublicSettings();
   const service = consultationServices[serviceCode]; if (!service) return;
   const price = money(siteSettings?.[service.price]);
   const bankRows = [['Titular de la cuenta',siteSettings?.bank_account_holder],['Banco',siteSettings?.bank_name],['CLABE interbancaria',siteSettings?.bank_clabe]];
