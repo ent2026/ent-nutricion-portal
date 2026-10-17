@@ -83,7 +83,7 @@ async function startEnrollment(serviceCode='initial', objective='') {
       <div class="proof-upload"><label class="form-label" for="request-payment-proof">Comprobante de transferencia</label><input class="input" id="request-payment-proof" name="payment_proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" aria-describedby="request-payment-proof-help" required /><small class="field-help" id="request-payment-proof-help" role="status">Obligatorio · PDF o imagen · máximo 5 MB. Adjunta el comprobante para habilitar el envío.</small></div>
       <div class="preview-callout">Enviar la solicitud no confirma un pago ni una cita. No incluyas información médica sensible aquí.</div>
       <label class="consent-row"><input type="checkbox" name="consent" required><span>Autorizo a ENT a usar mis datos para responder esta solicitud y coordinar mi atención.</span></label><label class="consent-row"><input type="checkbox" name="whatsapp_consent" required><span>Acepto recibir por WhatsApp avisos sobre mi solicitud, cita y acceso al portal ENT.</span></label>
-      <button class="button button-dark form-submit" type="submit" disabled>Enviar solicitud <span>↗</span></button><p class="form-note" id="request-feedback" role="status">Tu solicitud quedará en la bandeja del administrador.</p>
+      <button class="button button-dark form-submit" type="submit" disabled>Enviar solicitud <span>↗</span></button><p class="form-note" id="request-feedback" role="status">Al enviar, se registrará en ENT y se abrirá WhatsApp con un aviso listo para confirmar.</p>
     </form>`);
 
 }
@@ -171,6 +171,8 @@ document.addEventListener('submit',async (event)=>{
     button.disabled=true;button.textContent='Enviando solicitud…';
     const values=Object.fromEntries(new FormData(form).entries()),service=consultationServices[form.dataset.service];
     try{
+      let adminPhone=String(siteSettings?.admin_whatsapp||'527711017152').replace(/\D/g,'');if(adminPhone.length===10)adminPhone='52'+adminPhone;
+      if(!adminPhone)throw new Error('ENT aún no configuró su WhatsApp.');
       if(!publicClient)throw new Error('No hay conexión con el portal. Recarga la página e inténtalo de nuevo.');
       const payload=new FormData(form);
       payload.set('plan_code',form.dataset.service);
@@ -178,8 +180,10 @@ document.addEventListener('submit',async (event)=>{
       const {data,error}=await publicClient.functions.invoke('submit-consultation-request',{body:payload});
       if(error)throw error;
       if(!data?.success)throw new Error(data?.error||'No se pudo registrar la solicitud.');
-      const notificationSent=data.whatsapp_status?.sent===true;
-      form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud recibida</h3><p>Gracias, '+escapeHtml(values.full_name)+'. Tu solicitud y comprobante quedaron guardados en el administrador de ENT.</p><p class="form-note">'+(notificationSent?'ENT recibió el aviso automático por WhatsApp.':'El aviso automático por WhatsApp está pendiente de configuración. ENT ya tiene registrada tu solicitud y dará seguimiento desde el administrador.')+'</p></div>';
+      const priceText=data.price==null?'Por confirmar':money(data.price);
+      const message=['*SOLICITUD DE CONSULTA ENT*','Folio: '+data.application_id,'Nombre: '+String(values.full_name||'').trim(),'Teléfono: '+String(values.phone||'').trim(),'Servicio: '+service.label,'Precio: '+priceText,'Comprobante de transferencia: cargado en el portal ENT.'].join('\n');
+      form.innerHTML='<div class="request-success"><span class="success-check">✓</span><h3>Solicitud registrada</h3><p>Tu solicitud y comprobante quedaron guardados. WhatsApp se abrirá con un aviso preparado; toca Enviar ahí para notificar a ENT.</p></div>';
+      window.location.href='https://wa.me/'+adminPhone+'?text='+encodeURIComponent(message);
     }catch(error){
       button.disabled=false;button.innerHTML='Reintentar envío <span>↗</span>';
       if(feedback)feedback.textContent=error?.message||'No se pudo registrar la solicitud. Revisa tus datos e inténtalo de nuevo.';
