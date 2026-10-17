@@ -353,7 +353,7 @@
       <p class="form-note">Servicio: ${escapeHtml(serviceLabel(application.plan))} · ${escapeHtml(application.months)} mes(es).<br>Objetivo: ${escapeHtml(application.objective||'No especificado')}.</p><div class="form-grid"><div><label class="form-label" for="application-appointment-date">Fecha y hora de consulta</label><input class="input" id="application-appointment-date" name="scheduled_at" type="datetime-local" required /></div><div><label class="form-label" for="application-appointment-type">Modalidad</label><select class="select" id="application-appointment-type" name="appointment_type" required><option value="" disabled selected>Elige modalidad</option><option value="in_person">Presencial</option><option value="online">En línea</option></select></div></div><label class="form-label" for="application-appointment-location">Dirección o enlace</label><input class="input" id="application-appointment-location" name="location_or_link" maxlength="500" required minlength="3" placeholder="Dirección del consultorio o enlace de consulta" />
       <label class="form-label" for="application-password">Contraseña de acceso · 5 a 15 caracteres</label><div class="password-entry"><input class="input" id="application-password" name="initial_password" type="password" minlength="5" maxlength="15" autocomplete="new-password" required /><button class="button button-outline password-action" type="button" data-toggle-password="application-password" aria-label="Mostrar contraseña">Ver</button><button class="button button-outline password-action" type="button" data-copy-from="application-password">Copiar</button></div>
       <button class="button button-dark form-submit" type="submit">Crear cuenta y expediente →</button>
-    </form><button class="button button-outline form-submit" type="button" data-cancel-create-access>Volver al administrador</button>
+    </form><div class="patient-delete-confirm"><h3>Solicitud no aceptada</h3><p>Rechazar y eliminar quitará esta solicitud y el comprobante asociado de ENT.</p><button class="button button-danger" type="button" data-reject-application="${escapeHtml(application.id)}">Rechazar y eliminar solicitud</button></div><button class="button button-outline form-submit" type="button" data-cancel-create-access>Volver al administrador</button>
   </div>`);
   const createPatientAccount = async (payload) => {
     const opensWhatsApp = Boolean(payload.application_id);
@@ -482,6 +482,19 @@
         content.querySelector('#patient-live-content')?.insertAdjacentHTML('afterbegin', `<p class="login-error" role="alert">${escapeHtml(error.message || 'No se pudo descargar el archivo.')}</p>`);
       }
       return;
+    }
+    const rejectApplication=event.target.closest('[data-reject-application]');
+    if(rejectApplication){
+      event.preventDefault();event.stopImmediatePropagation();
+      if(!window.confirm('¿Rechazar y eliminar esta solicitud y su comprobante de pago? Esta acción no se puede deshacer.'))return;
+      rejectApplication.disabled=true;rejectApplication.textContent='Eliminando…';
+      const id=rejectApplication.dataset.rejectApplication;
+      const {data:application,error:readError}=await client.from('patient_applications').select('payment_proof_path').eq('id',id).maybeSingle();
+      if(readError||!application){setLoginError('No se pudo encontrar la solicitud.');return;}
+      if(application.payment_proof_path){const {error:removeError}=await client.storage.from('payment-proofs').remove([application.payment_proof_path]);if(removeError){setLoginError('No se pudo borrar el comprobante. La solicitud sigue intacta.');rejectApplication.disabled=false;return;}}
+      const {error}=await client.from('patient_applications').delete().eq('id',id);
+      if(error){setLoginError('No se pudo borrar la solicitud. Intenta de nuevo.');rejectApplication.disabled=false;return;}
+      await renderAdmin();content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success">Solicitud y comprobante eliminados.</p>');return;
     }
     const lifestyleDelete=event.target.closest('[data-delete-lifestyle]');
     if(lifestyleDelete){
