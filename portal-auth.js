@@ -802,7 +802,7 @@
           record.diet_pdf_name = file.name.slice(0, 200);
         }
         const selectedPatient = form.querySelector('select[name="patient_id"]')?.selectedOptions?.[0];
-        const patientPhone = (selectedPatient?.dataset.phone || '').replace(/\D/g, '');
+        let patientPhone = (selectedPatient?.dataset.phone || '').replace(/\D/g, ''); if (patientPhone.length === 10) patientPhone = `52${patientPhone}`;
         const patientName = selectedPatient?.textContent.split(' · ')[0] || 'paciente';
         const { error } = await client.from(table).insert(record);
         if (error) throw error;
