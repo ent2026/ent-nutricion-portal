@@ -75,6 +75,7 @@ Deno.serve(async (request) => {
     const { data: existing, error } = await service.from('patient_profiles').select('user_id').eq('username', username).maybeSingle();
     if (error) return json({ error: 'No se pudo comprobar la disponibilidad del usuario.' }, 500);
     if (!existing) break;
+    if (applicationId) return json({ error: 'Ese usuario ya está ocupado. Elige otro usuario y vuelve a intentar.' }, 409);
     const ending = String(suffix);
     username = `${requestedUsername.slice(0, 40 - ending.length)}${ending}`;
   }
