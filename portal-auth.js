@@ -349,11 +349,13 @@
     if (error) throw error;
     if (!data || data.error) throw new Error(data?.error || 'No fue posible crear la cuenta.');
     await renderAdmin();
-    const phone = String(data.phone || '').replace(/\D/g, '');
-    const whatsappPhone = phone.length === 10 ? `52${phone}` : phone;
-    const appointmentDate = data.scheduled_at ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(data.scheduled_at)) : ''; const appointmentMode = data.appointment_type === 'online' ? 'En línea' : 'Presencial'; const appointmentDetails = appointmentDate ? ` Tu consulta quedó agendada para ${appointmentDate} (${appointmentMode}) en ${data.location_or_link}.` : ''; const message = encodeURIComponent(`Hola ${data.full_name}. Tu acceso al portal ENT está listo. Edad registrada: ${data.age ?? '—'} años. Usuario: ${data.username}. Contraseña: ${data.initial_password}.${appointmentDetails} Ingresa en https://ent2026.github.io/ent-nutricion-portal/paciente.html`);
-    const whatsapp = whatsappPhone ? `<a class="button button-outline" href="https://wa.me/${whatsappPhone}?text=${message}" target="_blank" rel="noopener">Preparar WhatsApp para el paciente</a>` : '';
-    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · comparte las credenciales de forma privada</b><span>Usuario</span><div class="password-entry"><input class="input" id="created-username" value="${escapeHtml(data.username)}" readonly /><button class="button button-outline password-action" type="button" data-copy-from="created-username">Copiar</button></div><span>Contraseña</span><div class="password-entry"><input class="input" id="created-password" type="text" value="${escapeHtml(data.initial_password)}" readonly /><button class="button button-outline password-action" type="button" data-toggle-password="created-password" aria-label="Ocultar contraseña">Ocultar</button><button class="button button-outline password-action" type="button" data-copy-from="created-password">Copiar</button></div>${whatsapp}<small>Si la aprobación incluye una cita, se mostrará aquí fecha, hora, modalidad y ubicación. La contraseña no se guarda en ENT y esta es la única pantalla donde podrás verla. El paciente puede cambiarla por decisión propia desde su cuenta.</small></section>`);
+    const notificationSent = data.whatsapp_status?.sent === true;
+    const notificationText = notificationSent
+      ? 'WhatsApp envió automáticamente al paciente la confirmación, la cita y sus credenciales.'
+      : data.whatsapp_status?.error === 'no_application'
+        ? 'Alta manual: no se envió WhatsApp porque no existe una solicitud con autorización registrada.'
+        : 'El expediente y la cita quedaron guardados. WhatsApp automático está pendiente de configuración; revisa la conexión de ENT antes de dar por entregadas las credenciales.';
+    content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal" role="status"><b>Acceso creado · ${notificationSent ? 'notificación enviada' : 'notificación pendiente'}</b><span>${escapeHtml(notificationText)}</span><span>Usuario</span><div class="password-entry"><input class="input" id="created-username" value="${escapeHtml(data.username)}" readonly /><button class="button button-outline password-action" type="button" data-copy-from="created-username">Copiar</button></div><span>Contraseña</span><div class="password-entry"><input class="input" id="created-password" type="text" value="${escapeHtml(data.initial_password)}" readonly /><button class="button button-outline password-action" type="button" data-toggle-password="created-password" aria-label="Ocultar contraseña">Ocultar</button><button class="button button-outline password-action" type="button" data-copy-from="created-password">Copiar</button></div><small>La contraseña se muestra una sola vez en el administrador. ${data.scheduled_at ? 'La confirmación también incluye la fecha, hora, modalidad y ubicación de la cita.' : ''}</small></section>`);
   };
   const promoteInitialAdmin = async () => {
     const { data, error } = await client.functions.invoke('ent-admin-bootstrap');
@@ -767,8 +769,8 @@
         if (form.id === 'admin-diet-form') dietRecordSaved = true;
         await renderAdmin();
         if (patientPhone) {
-          const appointmentNotice = form.id === 'admin-appointment-form' ? ' Tu consulta quedó agendada para ' + new Intl.DateTimeFormat('es-MX',{dateStyle:'full',timeStyle:'short'}).format(new Date(record.scheduled_at)) + ' (' + (record.appointment_type === 'online' ? 'En línea' : 'Presencial') + ') en ' + record.location_or_link + '.' : ''; const waMessage = encodeURIComponent('Hola ' + patientName + '. Hay una nueva notificación en tu perfil ENT.' + appointmentNotice + ' Ingresa en https://ent2026.github.io/ent-nutricion-portal/paciente.html para consultar tus datos.');
-          content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal whatsapp-ready"><b>Actualización publicada para ${escapeHtml(patientName)}</b><span>La notificación ya está en su perfil.</span><a class="button button-outline" href="https://wa.me/${patientPhone}?text=${waMessage}" target="_blank" rel="noopener">Abrir WhatsApp con aviso preparado</a><small>El mensaje se abrirá para que ENT lo revise y toque Enviar. No incluye información nutricional.</small></section>`);
+          
+          content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin', `<section class="credential-reveal whatsapp-ready"><b>Actualización publicada para ${escapeHtml(patientName)}</b><span>La notificación está disponible en el perfil ENT del paciente.</span></section>`);
         }
       } catch (error) {
         if (uploadedDietPdfPath && !dietRecordSaved) {
