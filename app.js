@@ -175,9 +175,9 @@ const playRequestSuccessTone=(audioContext)=>{
   if(!audioContext||audioContext.state!=='running')return;
   const start=audioContext.currentTime;
   [660,880].forEach((frequency,index)=>{
-    const oscillator=audioContext.createOscillator(),gain=audioContext.createGain(),at=start+index*.16;
+    const oscillator=audioContext.createOscillator(),gain=audioContext.createGain(),at=start+index*.24;
     oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency,at);
-    gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(.12,at+.025);gain.gain.exponentialRampToValueAtTime(.0001,at+.22);
+    gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(1,at+.025);gain.gain.exponentialRampToValueAtTime(.0001,at+.22);
     oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(at);oscillator.stop(at+.23);
   });
 };
