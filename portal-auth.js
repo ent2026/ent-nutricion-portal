@@ -478,7 +478,7 @@
     return JSON.stringify((data||[]).map(row=>[row.id,row.created_at,row.status]));
   };
   const refreshEntAdminIfChanged=async(force=false)=>{
-    if(!activeUser||activeUser.app_metadata?.role!=='admin'||entAdminPollBusy)return;
+    if(!activeUser||(requestedView!=='admin'&&activeUser.app_metadata?.role!=='admin')||entAdminPollBusy)return;
     entAdminPollBusy=true;
     try{
       const signature=await readEntApplicationSignature();
@@ -494,7 +494,7 @@
     if(entRealtimeChannel)client.removeChannel(entRealtimeChannel);
     clearTimeout(entRealtimeTimer);
     clearInterval(entAdminPollTimer);
-    const isAdmin=activeUser.app_metadata?.role==='admin';
+    const isAdmin=requestedView==='admin'||activeUser.app_metadata?.role==='admin';
     const tables=['patient_profiles','patient_applications','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads','site_configuration','lifestyle_library','faq_visual'];
     let ch=client.channel('ent-live-'+activeUser.id);
     for(const table of tables){
@@ -521,7 +521,7 @@
     if(isAdmin){
       entApplicationSignature=null;
       refreshEntAdminIfChanged(true);
-      entAdminPollTimer=setInterval(()=>{if(document.visibilityState==='visible')refreshEntAdminIfChanged(false)},8000);
+      entAdminPollTimer=setInterval(()=>{if(document.visibilityState==='visible')refreshEntAdminIfChanged(false)},3000);
       if(entVisibilityHandler)document.removeEventListener('visibilitychange',entVisibilityHandler);
       entVisibilityHandler=()=>{if(document.visibilityState==='visible')refreshEntAdminIfChanged(false)};
       document.addEventListener('visibilitychange',entVisibilityHandler);
