@@ -198,3 +198,35 @@ document.addEventListener('submit',async (event)=>{
   if(form.id==='new-patient-form'){event.preventDefault();showToast('El alta real se realiza desde el administrador protegido.');closeModal();}
 });
 document.querySelector('.mobile-menu').addEventListener('click',(event)=>{const button=event.currentTarget;const open=!document.querySelector('#mobile-panel').classList.contains('open');document.querySelector('#mobile-panel').classList.toggle('open',open);button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'Cerrar menú':'Abrir menú');button.textContent=open?'×':'☰';});
+
+
+/* Cierre accesible de los apartados legales del pie */
+const footerPolicyItems = [...document.querySelectorAll('.footer-policy')];
+footerPolicyItems.forEach((policy) => {
+  const body = policy.querySelector('.footer-policy-body');
+  const summary = policy.querySelector('summary');
+  if (!body || body.querySelector('.footer-policy-close')) return;
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'footer-policy-close';
+  closeButton.setAttribute('aria-label', 'Cerrar ' + (summary?.textContent.trim() || 'apartado'));
+  closeButton.textContent = '×';
+  closeButton.addEventListener('click', () => {
+    policy.open = false;
+    summary?.focus();
+  });
+  body.prepend(closeButton);
+  policy.addEventListener('toggle', () => {
+    if (policy.open) footerPolicyItems.forEach((other) => {
+      if (other !== policy) other.open = false;
+    });
+  });
+});
+document.addEventListener('click', (event) => {
+  footerPolicyItems.forEach((policy) => {
+    if (policy.open && !policy.contains(event.target)) policy.open = false;
+  });
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') footerPolicyItems.forEach((policy) => { policy.open = false; });
+});
