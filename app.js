@@ -27,10 +27,7 @@ function refreshPublicSettings(){
     const [year,month,day]=String(siteSettings.consult_prices_valid_until).slice(0,10).split('-').map(Number);
     validUntil.textContent=new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'long',year:'numeric'}).format(new Date(year,month-1,day));
   }
-  const host=document.querySelector('#public-announcement');if(!host||!siteSettings)return; host.hidden=true; host.innerHTML='';
-  const now=Date.now(),start=siteSettings.announcement_starts_at?Date.parse(siteSettings.announcement_starts_at):0,end=siteSettings.announcement_ends_at?Date.parse(siteSettings.announcement_ends_at):Infinity;
-  if(!siteSettings.announcement_active||!siteSettings.announcement_title||!siteSettings.announcement_body||now<start||now>end)return;
-  host.hidden=false;host.innerHTML='<article class="announcement-card"><div class="announcement-mark">ENT <span>·</span> AVISO</div><div><h2>'+escapeHtml(siteSettings.announcement_title)+'</h2><p>'+escapeHtml(siteSettings.announcement_body).replace(/\n/g,'<br>')+'</p></div></article>';
+  // Los avisos generales se muestran dentro del portal del paciente, no en la portada pública.
 }
 async function loadPublicSettings(){
   if(!publicClient)return;
@@ -41,6 +38,15 @@ async function loadPublicSettings(){
   const officeDetails=document.querySelector('#office-details');if(officeDetails&&siteSettings.office_address)officeDetails.textContent='Pago en la primera cita presencial · '+siteSettings.office_address;
 }
 loadPublicSettings();
+const publicActivePatientCount=document.querySelector('#active-patient-count');
+const loadPublicActivePatientCount=async()=>{
+  if(!publicClient||!publicActivePatientCount)return;
+  const {data,error}=await publicClient.from('site_public_metrics').select('active_patient_count').eq('id',true).maybeSingle();
+  if(error){console.warn('No fue posible cargar el conteo agregado de pacientes activos.');return;}
+  publicActivePatientCount.textContent=Number(data?.active_patient_count||0).toLocaleString('es-MX');
+};
+loadPublicActivePatientCount();
+if(publicClient)publicClient.channel('ent-public-active-patients').on('postgres_changes',{event:'UPDATE',schema:'public',table:'site_public_metrics',filter:'id=eq.true'},loadPublicActivePatientCount).subscribe();
 if(publicClient){publicClient.channel('ent-public-settings').on('postgres_changes',{event:'*',schema:'public',table:'site_configuration',filter:'id=eq.1'},()=>loadPublicSettings()).subscribe();}
 
 const informationHost=document.querySelector('#ent-information-list');
