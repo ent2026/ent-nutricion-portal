@@ -172,7 +172,67 @@ function adminEditor() {
   openModal(`<div class="dashboard"><div class="modal-kicker">EXPEDIENTE · DEMOSTRACIÓN</div><h2 id="modal-title">Nueva actualización</h2><p class="modal-lede">Mariana López · Consulta de seguimiento · Los cambios solo se simulan en esta vista previa.</p><div class="admin-update"><div><label class="form-label">Peso (kg)</label><input class="input" placeholder="Ej. 64.8" /></div><div><label class="form-label">Grasa corporal (%)</label><input class="input" placeholder="Ej. 25.1" /></div><div><label class="form-label">Masa muscular (kg)</label><input class="input" placeholder="Ej. 27.4" /></div><div><label class="form-label">Próxima consulta</label><input class="input" type="date" /></div><div><label class="form-label">Dieta / indicaciones</label><textarea placeholder="Resumen de la actualización (contenido de prueba)"></textarea></div></div><div class="preview-callout">Al publicar una actualización en el sistema final, el paciente recibiría un aviso. Aquí no se guarda ni se envía nada.</div><button class="button button-dark" data-admin-action="publish">Simular actualización</button></div>`);
 }
 
+const activateConsultationCard=(cta)=>{
+  const card=cta.closest('.consultation-card');
+  if(!card)return;
+  card.classList.add('is-opening');cta.classList.add('is-activated');
+  if(card.dataset.enrollmentPending==='true')return;
+  card.dataset.enrollmentPending='true';
+  window.setTimeout(()=>{
+    card.classList.remove('is-opening');cta.classList.remove('is-activated');
+    delete card.dataset.enrollmentPending;
+    startEnrollment(cta.dataset.consultPackage,'');
+  },300);
+};
+let cardPointerState=null;
+let suppressedCardClick=null;
+const clearCardPointerFeedback=(state)=>{
+  state.card.classList.remove('is-opening');
+  state.cta.classList.remove('is-activated');
+};
+document.addEventListener('pointerdown',(event)=>{
+  if(event.isPrimary===false||(event.pointerType==='mouse'&&event.button!==0))return;
+  const card=event.target.closest?.('.consultation-card');
+  if(!card||card.dataset.enrollmentPending==='true')return;
+  const cta=card.querySelector('[data-consult-package]');
+  if(!cta)return;
+  cardPointerState={card,cta,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,moved:false,pointerType:event.pointerType};
+  card.classList.add('is-opening');
+  cta.classList.add('is-activated');
+},{passive:true});
+document.addEventListener('pointermove',(event)=>{
+  const state=cardPointerState;
+  if(!state||state.pointerId!==event.pointerId||state.moved)return;
+  const threshold=state.pointerType==='touch'?12:6;
+  if(Math.hypot(event.clientX-state.startX,event.clientY-state.startY)>threshold){
+    state.moved=true;
+    clearCardPointerFeedback(state);
+  }
+},{passive:true});
+document.addEventListener('pointerup',(event)=>{
+  const state=cardPointerState;
+  if(!state||state.pointerId!==event.pointerId)return;
+  cardPointerState=null;
+  const releasedCard=event.target.closest?.('.consultation-card');
+  const isTap=!state.moved&&releasedCard===state.card;
+  suppressedCardClick={card:state.card,until:Date.now()+500};
+  if(isTap)activateConsultationCard(state.cta);
+  else clearCardPointerFeedback(state);
+},{passive:true});
+document.addEventListener('pointercancel',()=>{
+  if(cardPointerState)clearCardPointerFeedback(cardPointerState);
+  cardPointerState=null;
+},{passive:true});
+
 document.addEventListener('click',async (event)=>{
+  const clickedCard=event.target.closest?.('.consultation-card');
+  if(clickedCard&&suppressedCardClick?.card===clickedCard&&Date.now()<=suppressedCardClick.until){
+    suppressedCardClick=null;
+    event.preventDefault();
+    return;
+  }
+  if(suppressedCardClick&&Date.now()>suppressedCardClick.until)suppressedCardClick=null;
+
   const copyButton=event.target.closest('[data-copy-text]');
   if(copyButton){
     const value=copyButton.dataset.copyText || '';
@@ -184,15 +244,6 @@ document.addEventListener('click',async (event)=>{
     return;
   }
 
-  const activateConsultationCard=(cta)=>{
-    const card=cta.closest('.consultation-card');
-    if(!card||card.classList.contains('is-opening'))return;
-    card.classList.add('is-opening');cta.classList.add('is-activated');
-    window.setTimeout(()=>{
-      card.classList.remove('is-opening');cta.classList.remove('is-activated');
-      startEnrollment(cta.dataset.consultPackage,'');
-    },420);
-  };
   const consultation=event.target.closest('[data-consult-package]');
   if(consultation){activateConsultationCard(consultation);return;}
   const consultationCard=event.target.closest('.consultation-card');
