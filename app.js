@@ -48,8 +48,8 @@ function renderInformationSections(rows){
   informationHost.innerHTML=rows.map(row=>{
     const blocks=String(row.body||'').trim().split(/\n\s*\n/).filter(Boolean);
     const formatBlock=block=>'<p>'+escapeHtml(block).replace(/\n/g,'<br>')+'</p>';
-    if(row.id==='a83733f3-678f-4de3-bcda-ce5b2983a06d'&&blocks.length>=5){
-      return '<article class="ent-info-card ent-info-card--why"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-features">'+blocks.slice(0,3).map(formatBlock).join('')+'</div><h4 class="ent-info-followup">'+escapeHtml(blocks[3]).replace(/\n/g,'<br>')+'</h4><p class="ent-info-commitment">'+escapeHtml(blocks[4])+'</p></article>';
+    if(row.id==='a83733f3-678f-4de3-bcda-ce5b2983a06d'&&blocks.length>=8){
+      return '<article class="ent-info-card ent-info-card--why"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-features">'+blocks.slice(0,6).map(formatBlock).join('')+'</div><h4 class="ent-info-followup">'+escapeHtml(blocks[6]).replace(/\n/g,'<br>')+'</h4><p class="ent-info-commitment">'+escapeHtml(blocks[7])+'</p></article>';
     }
     if(row.id==='d146fab5-49ca-424a-b488-dac13f93e17a'&&blocks.length>=6){
       return '<article class="ent-info-card ent-info-card--methodology"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-methodology-top">'+blocks.slice(0,3).map(formatBlock).join('')+'</div><div class="ent-info-methodology-bottom">'+blocks.slice(3,5).map(formatBlock).join('')+'</div><p class="ent-info-objective">'+escapeHtml(blocks[5])+'</p></article>';
