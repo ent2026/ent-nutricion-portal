@@ -254,7 +254,7 @@
     }));
     for (const section of sections) {
       const title = (section.querySelector('h3')?.textContent || '').toLocaleLowerCase('es');
-      const group = /precio|pago|aviso general/.test(title) ? 'settings'
+      const group = /precio|pago|aviso general|informaci[oó]n del sitio/.test(title) ? 'settings'
         : /valoraci[oó]n|dieta|entrenamiento|consulta|lifestyle|clases/.test(title) ? 'followup' : 'patients';
       panels[group].append(section);
     }
@@ -283,13 +283,14 @@
   };
 
   const renderAdmin = async () => {
-    const [profiles, applications, appointments, configuration] = await Promise.all([
+    const [profiles, applications, appointments, configuration, informationSections] = await Promise.all([
       client.from('patient_profiles').select('user_id,full_name,username,phone,age,plan_code,plan_months,membership_started_on,membership_ends_on,status,created_at').order('created_at', { ascending: false }).limit(100),
       client.from('patient_applications').select('id,full_name,username,phone,age,objective,plan_code,plan_months,payment_preference,payment_proof_path,status,created_at').order('created_at', { ascending: false }).limit(100),
       client.from('appointments').select('id,patient_id,scheduled_at,status,appointment_type').in('status', ['scheduled', 'confirmed']).order('scheduled_at', { ascending: true }).limit(100),
-      client.from('site_configuration').select('*').eq('id', 1).single()
+      client.from('site_configuration').select('*').eq('id', 1).single(),
+      client.from('site_information_sections').select('id,title,body,sort_order,is_published').order('sort_order', { ascending: true }).order('created_at', { ascending: true })
     ]);
-    for (const result of [profiles, applications, appointments, configuration]) if (result.error) throw result.error;
+    for (const result of [profiles, applications, appointments, configuration, informationSections]) if (result.error) throw result.error;
     const patients = profiles.data || [];
     const requests = await Promise.all((applications.data || []).map(async (row) => {
       if (!row.payment_proof_path) return { ...row, payment_proof_url: null };
@@ -302,15 +303,19 @@
     const patientOptions = patients.map((row) => `<option value="${escapeHtml(row.user_id)}" data-phone="${escapeHtml(row.phone||'')}">${escapeHtml(row.full_name)} · ${escapeHtml(serviceLabel(row.plan_code))}</option>`).join('');
     const emptyPatientOption = patients.length ? '' : '<option value="">Primero crea una cuenta de paciente</option>';
     const settings = configuration.data;
+    const informationRows = informationSections.data || [];
     const sortedPatients = [...patients].sort((a,b) => String(a.full_name||'').localeCompare(String(b.full_name||''), 'es', { sensitivity: 'base' }));
     const patientDirectory = `<section class="dash-panel admin-section patient-directory-section"><div class="dash-panel-head"><div><h3>Directorio de pacientes</h3><p class="panel-note">Busca, selecciona varios expedientes para dar de baja o abre un paciente para revisar su historial.</p></div><span>${patients.length} EXPEDIENTES</span></div><label class="sr-only" for="admin-patient-search">Buscar paciente por nombre</label><input class="input patient-search" id="admin-patient-search" type="search" placeholder="Buscar por nombre…" autocomplete="off" /><div class="bulk-patient-actions"><label><input type="checkbox" data-select-all-patients aria-label="Seleccionar todos los pacientes"> Seleccionar todos</label><span data-selection-count>0 seleccionados</span><button class="button button-danger" type="button" data-bulk-delete disabled>Dar de baja seleccionados</button></div><div class="patient-directory-list" id="admin-patient-directory">${sortedPatients.length ? sortedPatients.map((row) => `<div class="patient-directory-row"><label class="patient-select"><input type="checkbox" data-select-patient="${escapeHtml(row.user_id)}" data-patient-username="${escapeHtml(row.username||'')}" data-patient-name="${escapeHtml(row.full_name)}" aria-label="Seleccionar a ${escapeHtml(row.full_name)}"></label><button class="patient-directory-item" type="button" data-open-patient="${escapeHtml(row.user_id)}"><span class="patient-directory-avatar">${escapeHtml(String(row.full_name||'P').slice(0,1).toUpperCase())}</span><span class="patient-directory-copy"><strong>${escapeHtml(row.full_name)}</strong><small>${escapeHtml(row.username||'Sin usuario')} · ${escapeHtml(row.age ?? '—')} años · ${escapeHtml(serviceLabel(row.plan_code))} · ${escapeHtml(row.status)}</small></span><span class="patient-directory-arrow">Ver expediente →</span></button></div>`).join('') : '<p class="panel-note">Aún no hay pacientes dados de alta.</p>'}</div></section>`;
     const priceField = (label, name) => `<div><label class="form-label" for="${name}">${label}</label><input class="input" id="${name}" name="${name}" type="number" min="0" step="1" value="${settings[name] ?? ''}" placeholder="MXN" /></div>`;
+    const informationList = informationRows.length ? informationRows.map((row,index) => '<article class="admin-information-row"><div class="admin-information-copy"><span class="section-kicker">APARTADO ' + String(index+1).padStart(2,'0') + ' · ' + (row.is_published ? 'PUBLICADO' : 'BORRADOR') + '</span><h4>' + escapeHtml(row.title) + '</h4><p>' + escapeHtml(row.body).replace(/\n/g,'<br>') + '</p></div><div class="admin-information-actions"><button class="button button-outline" type="button" data-edit-information-section="' + escapeHtml(row.id) + '">Editar</button><button class="button button-danger" type="button" data-delete-information-section="' + escapeHtml(row.id) + '">Eliminar</button></div></article>').join('') : '<p class="panel-note">Todavía no hay apartados informativos. Agrega el primero arriba.</p>';
+    const informationSectionPanel = '<section class="dash-panel admin-section admin-information-section"><div class="dash-panel-head"><div><h3>Información del sitio</h3><p class="panel-note">Estos textos se muestran debajo de “¿Qué necesitas hoy?” en la portada pública.</p></div><span>' + informationRows.length + ' APARTADOS</span></div><form class="live-admin-form" id="admin-information-section-form"><input type="hidden" name="section_id" id="information-section-id" /><label class="form-label" for="information-section-title">Título</label><input class="input" id="information-section-title" name="title" maxlength="140" required placeholder="Ej. Mi enfoque de trabajo" /><label class="form-label" for="information-section-body">Información</label><textarea class="input live-textarea" id="information-section-body" name="body" maxlength="10000" rows="7" required placeholder="Escribe el texto que aparecerá en la portada. Separa los párrafos con una línea en blanco."></textarea><p class="form-note" data-information-status role="status">Solo se muestra texto; no se agregan botones ni enlaces a la portada.</p><div class="information-editor-actions"><button class="button button-dark" type="submit">Agregar apartado</button><button class="button button-outline" type="button" data-cancel-information-edit hidden>Cancelar edición</button></div></form><div class="admin-information-list">' + informationList + '</div></section>';
     showModal(`<div class="dashboard">
       <div class="dashboard-header"><div><div class="modal-kicker">PANEL DEL PROFESIONAL</div><div class="profile-head admin-profile"><img class="avatar-photo" src="assets/esteban-tellez.jpg" alt="Esteban Téllez" /><div><h2 id="modal-title">Esteban Téllez</h2><p>Administración ENT</p></div></div><p class="modal-lede" style="margin:4px 0 0">Expedientes y solicitudes reales</p></div><div class="admin-header-actions"><button class="button button-outline" type="button" data-admin-audio-test aria-pressed="false">Activar sonido</button><button class="button button-outline" data-live-logout>Salir</button></div></div>
       <div class="admin-summary-grid"><div class="admin-summary-alert${activeApplicationAlerts.size ? ' is-alerting' : ''}" data-admin-summary-applications role="status" aria-live="polite"><small>SOLICITUDES</small><strong>${requests.length}</strong><span>${activeApplicationAlerts.size ? 'Nueva solicitud · revisar acceso' : 'En bandeja'}</span></div><div><small>PACIENTES</small><strong>${patients.length}</strong><span>Expedientes</span></div><div><small>CONSULTAS</small><strong>${upcoming.length}</strong><span>Próximas</span></div></div>
       ${patientDirectory}
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Alta manual de paciente</h3><span>CUENTA CON ACCESO AL PORTAL</span></div><form class="live-admin-form" id="admin-create-patient-form"><div class="form-grid"><div><label class="form-label" for="manual-full-name">Nombre completo</label><input class="input" id="manual-full-name" name="full_name" maxlength="160" required /></div><div><label class="form-label" for="manual-username">Usuario</label><input class="input" id="manual-username" name="username" maxlength="40" pattern="[a-zA-Z0-9._-]+" required /></div><div><label class="form-label" for="manual-phone">Teléfono / WhatsApp</label><input class="input" id="manual-phone" name="phone" maxlength="40" required /></div><div><label class="form-label" for="manual-age">Edad</label><input class="input" id="manual-age" name="age" type="number" min="1" max="120" step="1" required /></div><div><label class="form-label" for="manual-plan">Consulta o paquete</label><select class="select" id="manual-plan" name="plan_code" required><option value="initial">Consulta inicial</option><option value="followup">Consulta de seguimiento</option><option value="bimonthly">Paquete bimestral · 2 consultas</option><option value="quarterly">Paquete trimestral · 3 consultas</option><option value="semester">Paquete semestral · 6 consultas</option><option value="couple">Consulta en pareja · 2 personas</option></select></div><div><label class="form-label" for="manual-password">Contraseña de acceso</label><div class="password-entry"><input class="input" id="manual-password" name="initial_password" type="password" minlength="5" maxlength="15" autocomplete="new-password" required /><button class="button button-outline password-action password-toggle-icon" type="button" data-toggle-password="manual-password" aria-label="Mostrar contraseña" title="Mostrar contraseña">${passwordEyeIcon(false)}</button><button class="button button-outline password-action" type="button" data-copy-from="manual-password">Copiar</button></div></div></div><p class="form-note">Tú defines la contraseña (5 a 15 caracteres). Se establece al crear la cuenta; ENT no la guarda ni podrá consultarla después.</p><button class="button button-dark" type="submit">Crear acceso de paciente</button></form></section>
       <section class="dash-panel admin-section"><div class="dash-panel-head"><h3>Precios y datos de pago</h3><span>VISIBLE EN LA PORTADA</span></div><form class="live-admin-form" id="admin-config-form"><div class="dash-panel-head"><h3>Consultas presenciales · 2026</h3><span>PRECIOS PÚBLICOS EDITABLES</span></div><div class="form-grid">${priceField('Consulta inicial individual','consult_initial_price')}${priceField('Consulta seguimiento individual','consult_followup_price')}${priceField('Paquete bimestral · 2 consultas','consult_bimonthly_price')}${priceField('Paquete trimestral · 3 consultas','consult_quarterly_price')}${priceField('Paquete semestral · 6 consultas','consult_semester_price')}${priceField('Consulta en pareja · 2 personas','consult_couple_price')}</div><div><label class="form-label" for="consult-prices-until">Vigencia de precios</label><input class="input" id="consult-prices-until" name="consult_prices_valid_until" type="date" value="${settings.consult_prices_valid_until ? String(settings.consult_prices_valid_until).slice(0,10) : ''}" /></div><p class="form-note">La portada muestra estos precios y guarda cada solicitud en esta bandeja. Después, el paciente puede abrir WhatsApp y confirmar el envío del mensaje.</p><div class="form-grid"><div><label class="form-label" for="bank-account-holder">Titular de la cuenta</label><input class="input" id="bank-account-holder" name="bank_account_holder" value="${escapeHtml(settings.bank_account_holder||'')}" maxlength="180" /></div><div><label class="form-label" for="bank-name">Banco</label><input class="input" id="bank-name" name="bank_name" value="${escapeHtml(settings.bank_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-reference-type">Tipo de dato bancario</label><select class="select" id="bank-reference-type" name="bank_reference_type"><option value="CLABE interbancaria" ${settings.bank_reference_type==='CLABE interbancaria'?'selected':''}>CLABE interbancaria</option><option value="Número de tarjeta" ${settings.bank_reference_type==='Número de tarjeta'?'selected':''}>Número de tarjeta</option></select></div><div><label class="form-label" for="bank-reference-value">CLABE o número de tarjeta</label><input class="input" id="bank-reference-value" name="bank_reference_value" value="${escapeHtml(settings.bank_reference_value||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="bank-secondary-name">Segundo banco (opcional)</label><input class="input" id="bank-secondary-name" name="bank_secondary_name" value="${escapeHtml(settings.bank_secondary_name||'')}" maxlength="120" /></div><div><label class="form-label" for="bank-secondary-reference-type">Tipo de dato · segundo banco</label><select class="select" id="bank-secondary-reference-type" name="bank_secondary_reference_type"><option value="CLABE interbancaria" ${settings.bank_secondary_reference_type==='CLABE interbancaria'?'selected':''}>CLABE interbancaria</option><option value="Número de tarjeta" ${settings.bank_secondary_reference_type==='Número de tarjeta'?'selected':''}>Número de tarjeta</option></select></div><div><label class="form-label" for="bank-secondary-reference-value">CLABE o número de tarjeta · segundo banco</label><input class="input" id="bank-secondary-reference-value" name="bank_secondary_reference_value" value="${escapeHtml(settings.bank_secondary_reference_value||'')}" maxlength="18" inputmode="numeric" /></div><div><label class="form-label" for="admin-whatsapp">WhatsApp ENT (código de país + número)</label><input class="input" id="admin-whatsapp" name="admin_whatsapp" value="${escapeHtml(settings.admin_whatsapp||'')}" maxlength="20" placeholder="5219990000000" /></div></div><label class="form-label" for="transfer-instructions">Instrucciones de transferencia</label><textarea class="input live-textarea" id="transfer-instructions" name="transfer_instructions" maxlength="1000">${escapeHtml(settings.transfer_instructions||'')}</textarea><label class="form-label" for="office-address">Dirección del consultorio</label><textarea class="input live-textarea" id="office-address" name="office_address" maxlength="500">${escapeHtml(settings.office_address||'')}</textarea><hr><div class="dash-panel-head"><h3>Aviso general público</h3><label class="switch-label"><input type="checkbox" name="announcement_active" ${settings.announcement_active?'checked':''}> Publicar aviso</label></div><label class="form-label" for="announcement-title">Título del aviso</label><input class="input" id="announcement-title" name="announcement_title" value="${escapeHtml(settings.announcement_title||'')}" maxlength="180" /><label class="form-label" for="announcement-body">Mensaje</label><textarea class="input live-textarea" id="announcement-body" name="announcement_body" maxlength="1500">${escapeHtml(settings.announcement_body||'')}</textarea><div class="form-grid"><div><label class="form-label" for="announcement-start">Mostrar desde (opcional)</label><input class="input" id="announcement-start" name="announcement_starts_at" type="datetime-local" value="${settings.announcement_starts_at?new Date(settings.announcement_starts_at).toISOString().slice(0,16):''}" /></div><div><label class="form-label" for="announcement-end">Ocultar después de (opcional)</label><input class="input" id="announcement-end" name="announcement_ends_at" type="datetime-local" value="${settings.announcement_ends_at?new Date(settings.announcement_ends_at).toISOString().slice(0,16):''}" /></div></div><button class="button button-dark" type="submit">Guardar configuración</button></form></section>
+      ${informationSectionPanel}
       <section class="dash-panel admin-section admin-new-applications-alert${requests.some((row) => activeApplicationAlerts.has(row.id)) ? ' is-alerting' : ''}" data-admin-new-applications><div class="dash-panel-head"><h3>Solicitudes nuevas</h3><span>${requests.filter((row) => row.status === 'new').length} POR REVISAR</span></div>
         ${activeApplicationAlerts.size ? '<div class="new-application-alert-banner" role="alert"><b>ALERTA DE PACIENTE</b> Solicitud pendiente. Pulsa “Revisar y crear usuario” para detener el aviso.</div>' : ''}
         ${requests.length ? `<div class="application-request-list">${requests.map((row) => `<article class="application-request-card ${activeApplicationAlerts.has(row.id) ? 'application-alert-row' : ''}" data-application-card="${escapeHtml(row.id)}">
@@ -626,7 +631,7 @@
     clearTimeout(entRealtimeTimer);
     clearInterval(entAdminPollTimer);
     const isAdmin=requestedView==='admin'||activeUser.app_metadata?.role==='admin';
-    const tables=['patient_profiles','patient_applications','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads','site_configuration','lifestyle_library','faq_visual'];
+    const tables=['patient_profiles','patient_applications','body_measurements','nutrition_updates','training_plans','appointments','patient_notifications','patient_notification_reads','site_configuration','lifestyle_library','faq_visual','site_information_sections'];
     let ch=client.channel('ent-live-'+activeUser.id);
     for(const table of tables){
       const ownerColumn=table==='patient_profiles'?'user_id':'patient_id';
@@ -700,6 +705,38 @@
   };
 
   document.addEventListener('click', async (event) => {
+    const cancelInformationEdit=event.target.closest('[data-cancel-information-edit]');
+    if(cancelInformationEdit){
+      event.preventDefault();event.stopImmediatePropagation();
+      const form=content.querySelector('#admin-information-section-form');
+      if(form){form.reset();form.elements.section_id.value='';form.querySelector('[type="submit"]').textContent='Agregar apartado';cancelInformationEdit.hidden=true;form.querySelector('[data-information-status]').textContent='Solo se muestra texto; no se agregan botones ni enlaces a la portada.';}
+      return;
+    }
+    const editInformation=event.target.closest('[data-edit-information-section]');
+    if(editInformation){
+      event.preventDefault();event.stopImmediatePropagation();
+      editInformation.disabled=true;
+      const {data,error}=await client.from('site_information_sections').select('id,title,body').eq('id',editInformation.dataset.editInformationSection).maybeSingle();
+      editInformation.disabled=false;
+      if(error||!data){setLoginError('No se pudo abrir este apartado para editarlo.');return;}
+      const form=content.querySelector('#admin-information-section-form');
+      form.elements.section_id.value=data.id;form.elements.title.value=data.title;form.elements.body.value=data.body;
+      form.querySelector('[type="submit"]').textContent='Guardar cambios';form.querySelector('[data-cancel-information-edit]').hidden=false;
+      form.querySelector('[data-information-status]').textContent='Editando este apartado. Guarda los cambios para publicarlos.';
+      form.scrollIntoView({behavior:'smooth',block:'center'});form.elements.title.focus({preventScroll:true});
+      return;
+    }
+    const deleteInformation=event.target.closest('[data-delete-information-section]');
+    if(deleteInformation){
+      event.preventDefault();event.stopImmediatePropagation();
+      if(!window.confirm('¿Eliminar este apartado de la portada pública?'))return;
+      deleteInformation.disabled=true;deleteInformation.textContent='Eliminando…';
+      const {error}=await client.from('site_information_sections').delete().eq('id',deleteInformation.dataset.deleteInformationSection);
+      if(error){setLoginError('No se pudo eliminar el apartado. No se borró de la base de datos.');deleteInformation.disabled=false;deleteInformation.textContent='Eliminar';return;}
+      await renderAdmin();
+      content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success" role="status">Apartado eliminado y portada actualizada.</p>');
+      return;
+    }
     const soundTest=event.target.closest('[data-admin-audio-test]');
     if(soundTest){
       event.preventDefault();event.stopImmediatePropagation();
@@ -1095,6 +1132,34 @@
           submit.disabled=false;submit.textContent='Intentar de nuevo';
         }
       }
+      return;
+    }
+    if (form.id === 'admin-information-section-form') {
+      event.preventDefault();event.stopImmediatePropagation();
+      const submit=form.querySelector('[type="submit"]');
+      const status=form.querySelector('[data-information-status]');
+      const values=Object.fromEntries(new FormData(form).entries());
+      const sectionId=String(values.section_id||'').trim();
+      const title=String(values.title||'').trim();
+      const body=String(values.body||'').trim();
+      if(title.length<2||!body){status.textContent='Escribe un título y el contenido del apartado.';return;}
+      submit.disabled=true;submit.textContent='Publicando…';status.textContent='Guardando la información…';
+      const payload={title,body,is_published:true,updated_at:new Date().toISOString()};
+      let result;
+      if(sectionId) result=await client.from('site_information_sections').update(payload).eq('id',sectionId);
+      else {
+        const {data:existing}=await client.from('site_information_sections').select('sort_order').order('sort_order',{ascending:false}).limit(1).maybeSingle();
+        payload.sort_order=Number(existing?.sort_order||0)+10;
+        result=await client.from('site_information_sections').insert(payload);
+      }
+      if(result?.error){
+        status.textContent='No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.';
+        submit.disabled=false;submit.textContent=sectionId?'Reintentar guardado':'Reintentar publicación';
+        return;
+      }
+      const message=sectionId?'Apartado actualizado y publicado correctamente.':'Apartado agregado y publicado correctamente.';
+      await renderAdmin();
+      content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success" role="status">'+escapeHtml(message)+'</p>');
       return;
     }
     if (form.id.startsWith('admin-') && form.id.endsWith('-form')) {
