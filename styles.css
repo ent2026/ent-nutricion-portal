@@ -502,3 +502,13 @@
 .consultation-card.is-opening .consult-info-cta,.consult-info-cta.is-activated{background:#315a49!important;color:#fff!important;border-color:#315a49!important;animation:ent-jelly .32s cubic-bezier(.34,1.56,.64,1) both}
 .consultation-card :focus:not(:focus-visible){outline:none;box-shadow:none}
 @media(prefers-reduced-motion:reduce){.consultation-card.is-opening .consult-info-cta,.consult-info-cta.is-activated{animation:none}}
+
+/* Idle consultation cards always return to their original white CTA state. */
+.consultation-card:not(.is-opening):hover .consult-info-cta:not(.is-activated),
+.consult-info-cta:not(.is-activated):not(:active):hover,
+.consult-info-cta:not(.is-activated):focus-visible {
+  background:#fff!important;
+  color:#315a49!important;
+  border-color:#d7dfd4!important;
+  animation:none!important;
+}
