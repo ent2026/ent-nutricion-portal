@@ -495,8 +495,10 @@
 @media(max-width:650px){.entry-grid{grid-template-columns:1fr}.active-patient-proof{margin:5px 14px 9px;min-height:53px}.active-patient-proof strong{font-size:23px}.patient-alert-popup{align-items:flex-start;flex-wrap:wrap}.patient-alert-popup span{flex:1 1 100%}}
 @media(prefers-reduced-motion:reduce){.patient-alert-popup{animation:none}}
 .patient-header-actions{display:flex;align-items:center;gap:8px}.patient-audio-enable{white-space:nowrap}.announcement-publish-actions{margin:16px 0 8px;padding:14px;background:#f2f5ef;border:1px solid #dce5d9;border-radius:4px}.announcement-publish-actions .form-note{margin:8px 0 0;line-height:1.6}@media(max-width:650px){.patient-header-actions{gap:5px;flex-direction:column;align-items:flex-end}.patient-header-actions .button{font-size:8px;padding:8px 9px}.announcement-publish-actions .button{width:100%}}
-/* Apply the same green jelly feedback when any consultation card area is tapped. */
-.consultation-card{cursor:pointer;transition:border-color .18s,background .18s,transform .18s}
-.consultation-card.is-opening{border-color:#315a49;background:#f2f6f0;transform:translateY(-2px)}
-.consultation-card.is-opening .consult-info-cta,.consult-info-cta.is-activated{background:#315a49!important;color:#fff!important;border-color:#315a49!important;animation:ent-jelly .42s ease}
-@media(prefers-reduced-motion:reduce){.consultation-card.is-opening .consult-info-cta,.consult-info-cta.is-activated{animation:none}.consultation-card.is-opening{transform:none}}
+/* Tap feedback starts on contact; scrolling cancels the action. */
+.consultation-card,.consultation-card *,.consult-info-cta{-webkit-tap-highlight-color:transparent}
+.consultation-card{cursor:pointer;touch-action:pan-y;transition:border-color .15s,background .15s}
+.consultation-card.is-opening{border-color:#315a49;background:#fff}
+.consultation-card.is-opening .consult-info-cta,.consult-info-cta.is-activated{background:#315a49!important;color:#fff!important;border-color:#315a49!important;animation:ent-jelly .32s cubic-bezier(.34,1.56,.64,1) both}
+.consultation-card :focus:not(:focus-visible){outline:none;box-shadow:none}
+@media(prefers-reduced-motion:reduce){.consultation-card.is-opening .consult-info-cta,.consult-info-cta.is-activated{animation:none}}
