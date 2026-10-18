@@ -54,7 +54,7 @@ function renderInformationSections(rows){
       }
       return '<p>'+escapeHtml(block).replace(/\n/g,'<br>')+'</p>';
     }).join('');
-    return '<article class="ent-info-card"><div class="ent-info-topline"><span>'+String(index+1).padStart(2,'0')+'</span><span>ENT · ESTEBAN TÉLLEZ</span></div><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-copy">'+body+'</div></article>';
+    return '<article class="ent-info-card"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-copy">'+body+'</div></article>';
   }).join('');
 }
 async function loadInformationSections(){
