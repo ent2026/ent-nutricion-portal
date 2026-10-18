@@ -15,6 +15,8 @@ const publicClient = window.ENT_SUPABASE_CLIENT || (window.ENT_SUPABASE_CONFIG &
 if (publicClient) window.ENT_SUPABASE_CLIENT = publicClient;
 let siteSettings = null;
 const escapeHtml = (value='') => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const professionalRegistryUrl='https://cedulaprofesional.sep.gob.mx/';
+const formatPublicText=value=>escapeHtml(value).replaceAll('14489549','<a class="professional-license-link professional-license-inline" href="'+professionalRegistryUrl+'" target="_blank" rel="noopener noreferrer" aria-label="Consultar la cédula profesional 14489549 en el Registro Nacional de Profesionistas">14489549 ↗</a>');
 const money = value => value == null || value === '' ? 'Por confirmar' : new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(Number(value));
 function refreshPublicSettings(){
   for(const field of ['consult_initial_price','consult_followup_price','consult_bimonthly_price','consult_quarterly_price','consult_semester_price','consult_couple_price']){
@@ -47,9 +49,9 @@ function renderInformationSections(rows){
   if(!rows.length){informationHost.innerHTML='<p class="ent-information-loading">La información se actualizará próximamente.</p>';return;}
   informationHost.innerHTML=rows.map(row=>{
     const blocks=String(row.body||'').trim().split(/\n\s*\n/).filter(Boolean);
-    const formatBlock=block=>'<p>'+escapeHtml(block).replace(/\n/g,'<br>')+'</p>';
+    const formatBlock=block=>'<p>'+formatPublicText(block).replace(/\n/g,'<br>')+'</p>';
     if(row.id==='a83733f3-678f-4de3-bcda-ce5b2983a06d'&&blocks.length>=8){
-      return '<article class="ent-info-card ent-info-card--why"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-features">'+blocks.slice(0,6).map(formatBlock).join('')+'</div><h4 class="ent-info-followup">'+escapeHtml(blocks[6]).replace(/\n/g,'<br>')+'</h4><p class="ent-info-commitment">'+escapeHtml(blocks[7])+'</p></article>';
+      return '<article class="ent-info-card ent-info-card--why"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-features">'+blocks.slice(0,6).map(formatBlock).join('')+'</div><h4 class="ent-info-followup">'+formatPublicText(blocks[6]).replace(/\n/g,'<br>')+'</h4><p class="ent-info-commitment">'+formatPublicText(blocks[7])+'</p></article>';
     }
     if(row.id==='d146fab5-49ca-424a-b488-dac13f93e17a'&&blocks.length>=6){
       return '<article class="ent-info-card ent-info-card--methodology"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-methodology-top">'+blocks.slice(0,3).map(formatBlock).join('')+'</div><div class="ent-info-methodology-bottom">'+blocks.slice(3,5).map(formatBlock).join('')+'</div><p class="ent-info-objective">'+escapeHtml(blocks[5])+'</p></article>';
@@ -57,7 +59,7 @@ function renderInformationSections(rows){
     const body=blocks.map(block=>{
       const lines=block.split('\n');
       if(lines.length>1&&lines[0].length<85&&!/[.!?]$/.test(lines[0].trim())){
-        return '<p><strong class="ent-info-subheading">'+escapeHtml(lines[0])+'</strong><br>'+escapeHtml(lines.slice(1).join('\n')).replace(/\n/g,'<br>')+'</p>';
+        return '<p><strong class="ent-info-subheading">'+formatPublicText(lines[0])+'</strong><br>'+formatPublicText(lines.slice(1).join('\n')).replace(/\n/g,'<br>')+'</p>';
       }
       return formatBlock(block);
     }).join('');
