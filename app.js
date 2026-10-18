@@ -40,6 +40,31 @@ async function loadPublicSettings(){
 }
 loadPublicSettings();
 if(publicClient){publicClient.channel('ent-public-settings').on('postgres_changes',{event:'*',schema:'public',table:'site_configuration',filter:'id=eq.1'},()=>loadPublicSettings()).subscribe();}
+
+const informationHost=document.querySelector('#ent-information-list');
+function renderInformationSections(rows){
+  if(!informationHost)return;
+  if(!rows.length){informationHost.innerHTML='<p class="ent-information-loading">La información se actualizará próximamente.</p>';return;}
+  informationHost.innerHTML=rows.map((row,index)=>{
+    const blocks=String(row.body||'').trim().split(/\n\s*\n/).filter(Boolean);
+    const body=blocks.map(block=>{
+      const lines=block.split('\n');
+      if(lines.length>1&&lines[0].length<85&&!/[.!?]$/.test(lines[0].trim())){
+        return '<p><strong class="ent-info-subheading">'+escapeHtml(lines[0])+'</strong><br>'+escapeHtml(lines.slice(1).join('\n')).replace(/\n/g,'<br>')+'</p>';
+      }
+      return '<p>'+escapeHtml(block).replace(/\n/g,'<br>')+'</p>';
+    }).join('');
+    return '<article class="ent-info-card"><div class="ent-info-topline"><span>'+String(index+1).padStart(2,'0')+'</span><span>ENT · ESTEBAN TÉLLEZ</span></div><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-copy">'+body+'</div></article>';
+  }).join('');
+}
+async function loadInformationSections(){
+  if(!publicClient||!informationHost)return;
+  const {data,error}=await publicClient.from('site_information_sections').select('id,title,body,sort_order').eq('is_published',true).order('sort_order',{ascending:true}).order('created_at',{ascending:true});
+  if(error){console.warn('No fue posible cargar la información de ENT.');return;}
+  renderInformationSections(data||[]);
+}
+loadInformationSections();
+if(publicClient){publicClient.channel('ent-public-information').on('postgres_changes',{event:'*',schema:'public',table:'site_information_sections'},()=>loadInformationSections()).subscribe();}
 const showToast = (message) => {
   toast.textContent = message;
   toast.classList.add('show');
