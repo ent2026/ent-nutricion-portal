@@ -496,7 +496,7 @@
 @media(prefers-reduced-motion:reduce){.patient-alert-popup{animation:none}}
 .patient-header-actions{display:flex;align-items:center;gap:8px}.patient-audio-enable{white-space:nowrap}.announcement-publish-actions{margin:16px 0 8px;padding:14px;background:#f2f5ef;border:1px solid #dce5d9;border-radius:4px}.announcement-publish-actions .form-note{margin:8px 0 0;line-height:1.6}@media(max-width:650px){.patient-header-actions{gap:5px;flex-direction:column;align-items:flex-end}.patient-header-actions .button{font-size:8px;padding:8px 9px}.announcement-publish-actions .button{width:100%}}
 /* Tap feedback starts on contact; scrolling cancels the action. */
-.consultation-card,.consultation-card *,.consult-info-cta{-webkit-tap-highlight-color:transparent}
+.consultation-card,.consultation-card *,.consult-info-cta{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 .consultation-card{cursor:pointer;touch-action:pan-y;transition:border-color .15s,background .15s}
 .consultation-card.is-opening{border-color:#315a49;background:#fff}
 .consultation-card.is-opening .consult-info-cta,.consult-info-cta.is-activated{background:#315a49!important;color:#fff!important;border-color:#315a49!important;animation:ent-jelly .32s cubic-bezier(.34,1.56,.64,1) both}
