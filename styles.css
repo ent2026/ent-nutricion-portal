@@ -512,3 +512,6 @@
   border-color:#d7dfd4!important;
   animation:none!important;
 }
+
+/* Keep every consultation card neutral while no one is interacting with it. */
+.consultation-card-featured:not(.is-opening){background:#fff;border-color:rgba(35,54,43,.14)}
