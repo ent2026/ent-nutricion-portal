@@ -184,10 +184,22 @@ document.addEventListener('click',async (event)=>{
     return;
   }
 
+  const activateConsultationCard=(cta)=>{
+    const card=cta.closest('.consultation-card');
+    if(!card||card.classList.contains('is-opening'))return;
+    card.classList.add('is-opening');cta.classList.add('is-activated');
+    window.setTimeout(()=>{
+      card.classList.remove('is-opening');cta.classList.remove('is-activated');
+      startEnrollment(cta.dataset.consultPackage,'');
+    },420);
+  };
   const consultation=event.target.closest('[data-consult-package]');
-  if(consultation){startEnrollment(consultation.dataset.consultPackage,'');return;}
+  if(consultation){activateConsultationCard(consultation);return;}
   const consultationCard=event.target.closest('.consultation-card');
-  if(consultationCard && !event.target.closest('a,button,input,textarea,select')) { const cta=consultationCard.querySelector('[data-consult-package]'); if(cta){ startEnrollment(cta.dataset.consultPackage,''); return; } }
+  if(consultationCard){
+    const cta=consultationCard.querySelector('[data-consult-package]');
+    if(cta){activateConsultationCard(cta);return;}
+  }
   const viewButton=event.target.closest('[data-view]');
   if(viewButton){const view=viewButton.dataset.view;document.querySelector('#mobile-panel').classList.remove('open');document.querySelector('.mobile-menu').setAttribute('aria-expanded','false');document.querySelector('.mobile-menu').setAttribute('aria-label','Abrir menú');document.querySelector('.mobile-menu').textContent='☰';if(view==='patient')patientDashboard();else if(view==='admin')adminDashboard();else if(view==='choose')document.querySelector('#consultas')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const tab=event.target.closest('[data-dash]');if(tab){modal.querySelectorAll('[data-dash]').forEach(b=>b.classList.toggle('active',b===tab));document.querySelector('#dash-content').innerHTML=dashboardContent(tab.dataset.dash);return;}
