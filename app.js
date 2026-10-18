@@ -45,14 +45,21 @@ const informationHost=document.querySelector('#ent-information-list');
 function renderInformationSections(rows){
   if(!informationHost)return;
   if(!rows.length){informationHost.innerHTML='<p class="ent-information-loading">La información se actualizará próximamente.</p>';return;}
-  informationHost.innerHTML=rows.map((row,index)=>{
+  informationHost.innerHTML=rows.map(row=>{
     const blocks=String(row.body||'').trim().split(/\n\s*\n/).filter(Boolean);
+    const formatBlock=block=>'<p>'+escapeHtml(block).replace(/\n/g,'<br>')+'</p>';
+    if(row.id==='a83733f3-678f-4de3-bcda-ce5b2983a06d'&&blocks.length>=5){
+      return '<article class="ent-info-card ent-info-card--why"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-features">'+blocks.slice(0,3).map(formatBlock).join('')+'</div><h4 class="ent-info-followup">'+escapeHtml(blocks[3]).replace(/\n/g,'<br>')+'</h4><p class="ent-info-commitment">'+escapeHtml(blocks[4])+'</p></article>';
+    }
+    if(row.id==='d146fab5-49ca-424a-b488-dac13f93e17a'&&blocks.length>=6){
+      return '<article class="ent-info-card ent-info-card--methodology"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-methodology-top">'+blocks.slice(0,3).map(formatBlock).join('')+'</div><div class="ent-info-methodology-bottom">'+blocks.slice(3,5).map(formatBlock).join('')+'</div><p class="ent-info-objective">'+escapeHtml(blocks[5])+'</p></article>';
+    }
     const body=blocks.map(block=>{
       const lines=block.split('\n');
       if(lines.length>1&&lines[0].length<85&&!/[.!?]$/.test(lines[0].trim())){
         return '<p><strong class="ent-info-subheading">'+escapeHtml(lines[0])+'</strong><br>'+escapeHtml(lines.slice(1).join('\n')).replace(/\n/g,'<br>')+'</p>';
       }
-      return '<p>'+escapeHtml(block).replace(/\n/g,'<br>')+'</p>';
+      return formatBlock(block);
     }).join('');
     return '<article class="ent-info-card"><h3>'+escapeHtml(row.title)+'</h3><div class="ent-info-copy">'+body+'</div></article>';
   }).join('');
