@@ -451,3 +451,9 @@
   .ent-info-commitment,.ent-info-objective{font-size:12px;line-height:1.75}
   .ent-info-methodology-bottom{margin-bottom:18px}
 }
+
+/* Enlaces del pie en dos columnas y contacto centrado al final. */
+.footer-policies{grid-template-columns:repeat(2,minmax(0,1fr));max-width:720px}
+.footer-policy:nth-child(5){grid-column:1/-1;justify-self:center;width:min(100%,360px)}
+.footer-policy:nth-child(5) summary{max-width:100%;margin:0 auto}
+.footer-policy:nth-child(5)[open]{width:100%}
