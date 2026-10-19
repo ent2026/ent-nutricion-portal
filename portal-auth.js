@@ -185,7 +185,15 @@
     } else if (tab === 'entrenamiento') {
       const { data, error } = await client.from('training_plans').select('*').eq('patient_id', userId).eq('content_type', 'plan').eq('is_published', true).order('created_at', { ascending: false });
       if (error) throw error;
-      inner = data?.length ? data.map((item) => `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div><div class="diet-pdf-actions"><button class="button button-dark" data-download-training="${escapeHtml(item.id)}" data-file-name="${escapeHtml(item.training_pdf_name||'Entrenamiento ENT.pdf')}">Descargar PDF ↓</button><small>El PDF se borra del almacenamiento al descargarlo.</small></div>${item.plan_content?`<div class="live-plan-text">${escapeHtml(item.plan_content)}</div>`:''}</section>`).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Tu nutriólogo publicará aquí una rutina personalizada cuando forme parte de tu seguimiento.</p></section>';
+      inner = data?.length ? data.map((item) => {
+        const available = Boolean(item.training_pdf_path) && !item.training_pdf_downloaded_at;
+        const pdfAction = available
+          ? `<div class="diet-pdf-actions"><button class="button button-dark" type="button" data-download-training="${escapeHtml(item.id)}" data-file-name="${escapeHtml(item.training_pdf_name || 'Entrenamiento ENT.pdf')}">Descargar archivo PDF ↓</button><small>${escapeHtml(item.training_pdf_name || 'Documento PDF')} · se elimina del almacenamiento al descargar</small></div>`
+          : item.training_pdf_downloaded_at || !item.training_pdf_path
+            ? '<p class="panel-note">El archivo se retiró del almacenamiento después de descargarse. Si necesitas otra copia, solicítala a ENT.</p>'
+            : '';
+        return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${pdfAction}${item.plan_content ? `<div class="live-plan-text">${escapeHtml(item.plan_content)}</div>` : ''}</section>`;
+      }).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Tu nutriólogo publicará aquí una rutina personalizada cuando forme parte de tu seguimiento.</p></section>';
     } else if (tab === 'antropometria') {
       const { data, error } = await client.from('body_measurements').select('*').eq('patient_id',userId).order('measured_on',{ascending:false}).limit(24);
       if(error)throw error;
