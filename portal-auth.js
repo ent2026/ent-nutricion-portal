@@ -46,7 +46,7 @@
     if(!activeUser||requestedView==='admin')return;
     try{
       const [{data:notifications,error},{data:reads, error:readsError}]=await Promise.all([
-        client.from('patient_notifications').select('id,category').eq('patient_id',activeUser.id).in('category',['announcement','diet']).order('created_at',{ascending:false}).limit(50),
+        client.from('patient_notifications').select('id,category').eq('patient_id',activeUser.id).in('category',['general','diet']).order('created_at',{ascending:false}).limit(50),
         client.from('patient_notification_reads').select('notification_id').eq('patient_id',activeUser.id)
       ]);
       if(error)throw error;if(readsError)throw readsError;
@@ -227,7 +227,7 @@
   const renderPatient = async () => {
     const name = activeProfile.full_name || activeUser.email || 'Paciente';
     const [{data:patientNotifications,error:patientNotificationsError},{data:patientReads,error:patientReadsError}]=await Promise.all([
-      client.from('patient_notifications').select('id,category,title,created_at').eq('patient_id',activeUser.id).in('category',['announcement','diet']).order('created_at',{ascending:false}).limit(50),
+      client.from('patient_notifications').select('id,category,title,created_at').eq('patient_id',activeUser.id).in('category',['general','diet']).order('created_at',{ascending:false}).limit(50),
       client.from('patient_notification_reads').select('notification_id').eq('patient_id',activeUser.id)
     ]);
     if(patientNotificationsError)throw patientNotificationsError;if(patientReadsError)throw patientReadsError;
@@ -794,7 +794,7 @@
         const recipients=(activeProfiles||[]).map(row=>row.user_id);
         const notificationMessage='Tienes un nuevo mensaje importante en tu bandeja de avisos de tu portal personal, ENT revísalo.';
         for(let offset=0;offset<recipients.length;offset+=100){
-          const rows=recipients.slice(offset,offset+100).map(patient_id=>({patient_id,category:'announcement',title:'Nuevo aviso importante de ENT',message:notificationMessage}));
+          const rows=recipients.slice(offset,offset+100).map(patient_id=>({patient_id,category:'general',title:'Nuevo aviso importante de ENT',message:notificationMessage}));
           if(rows.length){
             const {data,error}=await client.from('patient_notifications').insert(rows).select('id');
             if(error)throw error;
@@ -808,7 +808,7 @@
           updated_by:activeUser.id,updated_at:new Date().toISOString()
         }).eq('id',1);
         if(configError)throw configError;
-        const whatsappUrl='https://api.whatsapp.com/send?text='+encodeURIComponent(notificationMessage);
+        const whatsappUrl='https://wa.me/?text='+encodeURIComponent(notificationMessage);
         if(whatsappTab)whatsappTab.location.href=whatsappUrl;
         if(form?.elements.announcement_active)form.elements.announcement_active.checked=true;
         content.querySelector('.dashboard')?.insertAdjacentHTML('afterbegin','<p class="admin-success" role="status">Aviso publicado y notificación creada para '+recipients.length+' pacientes activos. WhatsApp tiene el mensaje listo; selecciona tu lista de difusión y pulsa Enviar.</p>');
