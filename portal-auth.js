@@ -719,18 +719,32 @@
     activeUser = user;
     if (requestedView === 'admin') {
       entAdminSessionStartedAt=Date.now();
+      let adminSessionRefreshed = false;
       if (user.app_metadata?.role !== 'admin') {
         if (String(user.email || '').toLowerCase() !== ADMIN_EMAIL) {
           await client.auth.signOut();
           setLoginError('Esta cuenta no tiene permisos de administrador.');
           return;
         }
-        try { user = await promoteInitialAdmin(); activeUser = user; }
+        try { user = await promoteInitialAdmin(); activeUser = user; adminSessionRefreshed = true; }
         catch (error) {
           await client.auth.signOut();
           setLoginError(error.message || 'No se pudo activar la cuenta de administración.');
           return;
         }
+      }
+      if (!adminSessionRefreshed) {
+        const { data: refreshedSession, error: refreshError } = await client.auth.refreshSession();
+        if (refreshError || !refreshedSession?.session?.user) {
+          throw new Error('No se pudo actualizar la sesión administrativa. Recarga el portal e inténtalo de nuevo.');
+        }
+        user = refreshedSession.session.user;
+        activeUser = user;
+      }
+      if (user.app_metadata?.role !== 'admin') {
+        await client.auth.signOut();
+        setLoginError('La sesión no tiene permisos administrativos vigentes. Vuelve a iniciar sesión.');
+        return;
       }
       await renderAdmin();startEntRealtime();
       return;
