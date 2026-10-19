@@ -159,7 +159,7 @@
     const userId = activeUser.id;
     let inner = '';
     if (tab === 'mediciones' || tab === 'resumen') {
-      const { data, error } = await client.from('body_measurements').select('*').eq('patient_id', userId).order('measured_on', { ascending: false }).limit(24);
+      const { data, error } = await client.from('body_measurements').select('*').eq('patient_id', userId).order('measured_on', { ascending: false }).order('created_at', { ascending: false }).limit(24);
       if (error) throw error;
       const latest = data?.[0];
       inner = `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${tab === 'resumen' ? 'Última valoración' : 'Mediciones y evolución'}</h3><span>${latest ? escapeHtml(dateLabel(latest.measured_on)) : 'SIN VALORACIONES'}</span></div>
@@ -195,7 +195,7 @@
         return `<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>${escapeHtml(item.title)}</h3><span>${escapeHtml(dateLabel(item.published_at || item.created_at))}</span></div>${pdfAction}${item.plan_content ? `<div class="live-plan-text">${escapeHtml(item.plan_content)}</div>` : ''}</section>`;
       }).join('') : '<section class="dash-panel dash-content-wide"><h3>Sin plan de entrenamiento publicado</h3><p class="panel-note">Tu nutriólogo publicará aquí una rutina personalizada cuando forme parte de tu seguimiento.</p></section>';
     } else if (tab === 'antropometria') {
-      const { data, error } = await client.from('body_measurements').select('*').eq('patient_id',userId).order('measured_on',{ascending:false}).limit(24);
+      const { data, error } = await client.from('body_measurements').select('*').eq('patient_id',userId).order('measured_on',{ascending:false}).order('created_at',{ascending:false}).limit(24);
       if(error)throw error;
       const fields=[['triceps_skinfold_mm','Pliegue tricipital','mm'],['biceps_skinfold_mm','Pliegue bicipital','mm'],['subscapular_skinfold_mm','Pliegue subescapular','mm'],['suprailiac_skinfold_mm','Pliegue suprailiaco','mm'],['supraspinale_skinfold_mm','Pliegue supraespinal','mm'],['abdominal_skinfold_mm','Pliegue abdominal','mm'],['thigh_skinfold_mm','Pliegue muslo','mm'],['medial_calf_skinfold_mm','Pliegue pantorrilla medial','mm'],['arm_relaxed_cm','Circunferencia brazo relajado','cm'],['arm_flexed_cm','Circunferencia brazo contracción','cm'],['forearm_cm','Circunferencia antebrazo','cm'],['wrist_cm','Circunferencia muñeca','cm'],['waist_cm','Circunferencia cintura','cm'],['hip_cm','Circunferencia cadera','cm'],['thigh_cm','Circunferencia muslo','cm'],['calf_cm','Circunferencia pantorrilla','cm'],['humerus_breadth_cm','Diámetro húmero','cm'],['wrist_bistyloid_breadth_cm','Diámetro biestiloideo muñeca','cm'],['femur_breadth_cm','Diámetro fémur','cm']];
       inner=`<section class="dash-panel dash-content-wide"><div class="dash-panel-head"><h3>Antropometría</h3><span>${data?.[0]?escapeHtml(dateLabel(data[0].measured_on)):'SIN VALORACIONES'}</span></div>${data?.length?data.map(row=>`<h4>${escapeHtml(dateLabel(row.measured_on))}</h4><div class="metric-grid">${fields.map(([key,label,unit])=>metric(label,row[key],unit)).join('')}</div>`).join(''):'<p class="panel-note">Tu nutriólogo todavía no publica mediciones antropométricas.</p>'}</section>`;
@@ -255,7 +255,7 @@
     if (activeUser?.app_metadata?.role !== 'admin') throw new Error('Acceso exclusivo para administración.');
     const results = await Promise.all([
       client.from('patient_profiles').select('*').eq('user_id', patientId).single(),
-      client.from('body_measurements').select('*').eq('patient_id', patientId).order('measured_on', { ascending: false }).limit(30),
+      client.from('body_measurements').select('*').eq('patient_id', patientId).order('measured_on', { ascending: false }).order('created_at', { ascending: false }).limit(30),
       client.from('nutrition_updates').select('title,diet_content,recommendations,diet_pdf_path,diet_pdf_name,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
       client.from('training_plans').select('title,plan_content,content_type,video_url,is_published,published_at,created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(20),
       client.from('appointments').select('scheduled_at,appointment_type,location_or_link,status').eq('patient_id', patientId).order('scheduled_at', { ascending: false }).limit(20),
