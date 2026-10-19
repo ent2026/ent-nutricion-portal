@@ -340,7 +340,7 @@
     for (const result of [profiles, applications, appointments, configuration, informationSections, publicMetrics]) if (result.error) throw result.error;
     const patients = profiles.data || [];
     const activePatientsCount=Number(publicMetrics.data?.active_patient_count||0);
-    const requests = await Promise.all((applications.data || []).map(async (row) => {
+    const requests = await Promise.all((applications.data || []).filter((row) => ['new', 'contacted', 'scheduled'].includes(row.status)).map(async (row) => {
       if (!row.payment_proof_path) return { ...row, payment_proof_url: null };
       const { data, error } = await client.storage.from('payment-proofs').createSignedUrl(row.payment_proof_path, 3600);
       return { ...row, payment_proof_url: error ? null : data?.signedUrl || null };
