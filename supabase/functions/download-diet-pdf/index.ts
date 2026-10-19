@@ -14,7 +14,7 @@ const safeFilename = (value: unknown, fallback: string) => {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "Método no permitido." });
-  const token = (req.headers.get("Authorization") || "").match(/^Bearer\\s+(.+)$/i)?.[1];
+  const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return json(401, { error: "Inicia sesión para descargar el archivo." });
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
